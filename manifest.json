@@ -1,0 +1,14 @@
+{
+  "name": "日本語 Tracker",
+  "short_name": "日本語",
+  "description": "Mael's Japanese study tracker — kanji, vocab, grammar, and timeline to Matura.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F5EF",
+  "theme_color": "#F7F5EF",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
