@@ -68,45 +68,59 @@ const MILESTONES = [
 ];
 
 const STORAGE_KEY = "jsh-v1";
+const STREAK_KEY = "jsh-streak-v1";
 
 const EMPTY_FORM = {
-  kanji: "", vocab: "", minutes: "", retention: "",
-  daysStudied: "", secPerCard: "", mature: "", medianInterval: "",
+  rKnown: "", rRetention: "", rMinutes: "", rDaysStudied: "", rSecPerCard: "", rMature: "", rMedianInterval: "",
+  kKnown: "", kRetention: "", kMinutes: "", kDaysStudied: "", kSecPerCard: "", kMature: "", kMedianInterval: "",
 };
 
-/* Which AnkiDroid stat feeds each field */
-const FIELD_MAP = [
-  ["kanji", "Kanji known", "「Estimated total knowledge」 in RRTK", "141"],
-  ["vocab", "Vocab known", "「Estimated total knowledge」 in Kaishi", "0"],
-  ["retention", "Retention %", "「Retention → Today → All」", "100"],
-  ["minutes", "Min/day avg", "「Reviews → Average for days studied」 (min)", "13"],
-  ["daysStudied", "Days studied %", "「Reviews → Days studied」 percentage", "35"],
-  ["secPerCard", "Sec/card", "「Today → …s/card」", "19.8"],
-  ["mature", "Mature cards", "「Card Counts → Mature」", "70"],
-  ["medianInterval", "Median interval (d)", "「Review Intervals → Median interval」", "23"],
+const DECK_FIELDS = [
+  { prefix: "r", deck: "RRTK — Kanji", required: true, fields: [
+    ["Known", "「Estimated total knowledge」", "141"],
+    ["Retention %", "「Retention → Today → All」", "100"],
+    ["Min/day avg", "「Reviews → Average for days studied」", "13"],
+    ["Days studied %", "「Reviews → Days studied」 %", "35"],
+    ["Sec/card", "「Today → …s/card」", "19.8"],
+    ["Mature cards", "「Card Counts → Mature」", "70"],
+    ["Median interval (d)", "「Review Intervals → Median」", "23"],
+  ]},
+  { prefix: "k", deck: "Kaishi — Vocab", required: false, fields: [
+    ["Known", "「Estimated total knowledge」", "0"],
+    ["Retention %", "「Retention → Today → All」", "—"],
+    ["Min/day avg", "「Reviews → Average for days studied」", "—"],
+    ["Days studied %", "「Reviews → Days studied」 %", "—"],
+    ["Sec/card", "「Today → …s/card」", "—"],
+    ["Mature cards", "「Card Counts → Mature」", "—"],
+    ["Median interval (d)", "「Review Intervals → Median」", "—"],
+  ]},
 ];
+const KEY_SUFFIX = { "Known": "Known", "Retention %": "Retention", "Min/day avg": "Minutes", "Days studied %": "DaysStudied", "Sec/card": "SecPerCard", "Mature cards": "Mature", "Median interval (d)": "MedianInterval" };
 
 export default function JapaneseStudyApp() {
   const [tab, setTab] = useState("dash");
   const [state, setState] = useState({ logs: [], lessons: [], startDate: null });
+  const [streak, setStreak] = useState({ current: 0, best: 0, lastCheckIn: null, days: [] });
   const [loaded, setLoaded] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saveMsg, setSaveMsg] = useState("");
 
   useEffect(() => {
-    (async () => {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          setState({ logs: [], lessons: [], startDate: null, ...parsed });
-        }
-      } catch (e) { /* first run */ }
-      setLoaded(true);
-    })();
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setState({ logs: [], lessons: [], startDate: null, ...parsed });
+      }
+    } catch (e) { /* first run */ }
+    try {
+      const rawStreak = localStorage.getItem(STREAK_KEY);
+      if (rawStreak) setStreak((s) => ({ ...s, ...JSON.parse(rawStreak) }));
+    } catch (e) { /* first run */ }
+    setLoaded(true);
   }, []);
 
-  const persist = async (next) => {
+  const persist = (next) => {
     setState(next);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -119,19 +133,34 @@ export default function JapaneseStudyApp() {
   const num = (v) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
 
   const addLog = () => {
-    const kanji = num(form.kanji);
-    if (kanji === null) { setSaveMsg("Kanji count is required"); setTimeout(() => setSaveMsg(""), 2500); return; }
+    const kanji = num(form.rKnown);
+    if (kanji === null) { setSaveMsg("RRTK known count is required"); setTimeout(() => setSaveMsg(""), 2500); return; }
     const today = new Date().toISOString().slice(0, 10);
     const entry = {
       date: today,
       kanji,
-      vocab: num(form.vocab) ?? 0,
-      minutes: num(form.minutes),
-      retention: num(form.retention),
-      daysStudied: num(form.daysStudied),
-      secPerCard: num(form.secPerCard),
-      mature: num(form.mature),
-      medianInterval: num(form.medianInterval),
+      vocab: num(form.kKnown) ?? 0,
+      rrtk: {
+        known: kanji,
+        retention: num(form.rRetention),
+        minutes: num(form.rMinutes),
+        daysStudied: num(form.rDaysStudied),
+        secPerCard: num(form.rSecPerCard),
+        mature: num(form.rMature),
+        medianInterval: num(form.rMedianInterval),
+      },
+      kaishi: {
+        known: num(form.kKnown),
+        retention: num(form.kRetention),
+        minutes: num(form.kMinutes),
+        daysStudied: num(form.kDaysStudied),
+        secPerCard: num(form.kSecPerCard),
+        mature: num(form.kMature),
+        medianInterval: num(form.kMedianInterval),
+      },
+      minutes: num(form.rMinutes),
+      retention: num(form.rRetention),
+      daysStudied: num(form.rDaysStudied),
     };
     const logs = state.logs.filter((l) => l.date !== today);
     logs.push(entry);
@@ -152,7 +181,33 @@ export default function JapaneseStudyApp() {
   const clearAll = () => {
     if (!confirm("Reset ALL progress data? This can't be undone.")) return;
     persist({ logs: [], lessons: [], startDate: null });
+    persistStreak({ current: 0, best: 0, lastCheckIn: null, days: [] });
   };
+
+  const persistStreak = (next) => {
+    setStreak(next);
+    try { localStorage.setItem(STREAK_KEY, JSON.stringify(next)); } catch (e) {}
+  };
+
+  const checkInToday = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (streak.lastCheckIn === today) return;
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const continuing = streak.lastCheckIn === yesterday;
+    const current = continuing ? streak.current + 1 : 1;
+    const best = Math.max(current, streak.best);
+    const days = [...streak.days, today].slice(-90);
+    persistStreak({ current, best, lastCheckIn: today, days });
+    setSaveMsg("今日もお疲れ様 ✓");
+    setTimeout(() => setSaveMsg(""), 2000);
+  };
+
+  const checkedInToday = streak.lastCheckIn === new Date().toISOString().slice(0, 10);
+  const streakBroken = (() => {
+    if (!streak.lastCheckIn) return false;
+    const days = (Date.now() - new Date(streak.lastCheckIn).getTime()) / 86400000;
+    return days > 1.5;
+  })();
 
   const latest = state.logs[state.logs.length - 1];
   const prev = state.logs[state.logs.length - 2];
@@ -167,7 +222,6 @@ export default function JapaneseStudyApp() {
     return Math.max(0, (Date.now() - new Date(state.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.4));
   }, [state.startDate]);
 
-  /* pace projection: kanji/week from last two logs → weeks to 1000 */
   const projection = useMemo(() => {
     if (state.logs.length < 2) return null;
     const a = state.logs[0], b = state.logs[state.logs.length - 1];
@@ -248,6 +302,7 @@ export default function JapaneseStudyApp() {
         .req{color:var(--hanko)}
         .btn{font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;background:var(--hanko);color:#fff;border:none;border-radius:4px;padding:11px 18px;width:100%}
         .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+        .btn:disabled{opacity:0.7;cursor:default}
         .btn.ghost{background:transparent;color:var(--soft);border:1.5px dashed var(--soft);margin-top:8px;font-size:12px;padding:8px}
         .phasehead{display:flex;align-items:baseline;gap:10px;margin:20px 0 10px;border-bottom:2px solid var(--ink);padding-bottom:6px}
         .phasehead .t{font-family:'Shippori Mincho',serif;font-weight:800;font-size:15px}
@@ -281,7 +336,6 @@ export default function JapaneseStudyApp() {
           <div className="savemsg">{saveMsg}</div>
         </div>
 
-        {/* ============ DASHBOARD ============ */}
         {tab === "dash" && (
           <>
             <div className="card">
@@ -303,23 +357,38 @@ export default function JapaneseStudyApp() {
                   <div className="bar green"><div style={{ width: `${lessonPct}%` }} /></div>
                 </div>
               </div>
-              {latest && (
-                <div className="pillrow">
-                  {latest.retention != null && <span className="pill">安定 Retention <b>{latest.retention}%</b></span>}
-                  {latest.mature != null && <span className="pill">成熟 Mature <b>{latest.mature}</b></span>}
-                  {latest.secPerCard != null && <span className="pill">速度 <b>{latest.secPerCard}s</b>/card</span>}
-                  {latest.medianInterval != null && <span className="pill">間隔 Median <b>{latest.medianInterval}d</b></span>}
-                  {latest.daysStudied != null && <span className="pill">継続 Consistency <b>{latest.daysStudied}%</b></span>}
-                </div>
+              {latest && latest.rrtk && (
+                <>
+                  <div className="charttitle" style={{ marginTop: 12 }}>RRTK — kanji</div>
+                  <div className="pillrow">
+                    {latest.rrtk.retention != null && <span className="pill">安定 Retention <b>{latest.rrtk.retention}%</b></span>}
+                    {latest.rrtk.mature != null && <span className="pill">成熟 Mature <b>{latest.rrtk.mature}</b></span>}
+                    {latest.rrtk.secPerCard != null && <span className="pill">速度 <b>{latest.rrtk.secPerCard}s</b>/card</span>}
+                    {latest.rrtk.medianInterval != null && <span className="pill">間隔 <b>{latest.rrtk.medianInterval}d</b></span>}
+                    {latest.rrtk.daysStudied != null && <span className="pill">継続 <b>{latest.rrtk.daysStudied}%</b></span>}
+                  </div>
+                </>
+              )}
+              {latest && latest.kaishi && latest.kaishi.known > 0 && (
+                <>
+                  <div className="charttitle">Kaishi — vocab</div>
+                  <div className="pillrow">
+                    {latest.kaishi.retention != null && <span className="pill">安定 Retention <b>{latest.kaishi.retention}%</b></span>}
+                    {latest.kaishi.mature != null && <span className="pill">成熟 Mature <b>{latest.kaishi.mature}</b></span>}
+                    {latest.kaishi.secPerCard != null && <span className="pill">速度 <b>{latest.kaishi.secPerCard}s</b>/card</span>}
+                    {latest.kaishi.medianInterval != null && <span className="pill">間隔 <b>{latest.kaishi.medianInterval}d</b></span>}
+                    {latest.kaishi.daysStudied != null && <span className="pill">継続 <b>{latest.kaishi.daysStudied}%</b></span>}
+                  </div>
+                </>
               )}
               {projection && (
                 <p className="hint">
                   Pace: <b>{projection.perDay} kanji/day</b> → at this rate you hit 1000 around <b>{projection.finish}</b>.
                 </p>
               )}
-              {latest && latest.daysStudied != null && latest.daysStudied < 60 && (
+              {latest && latest.rrtk?.daysStudied != null && latest.rrtk.daysStudied < 60 && (
                 <p className="hint" style={{ color: "var(--hanko)" }}>
-                  ⚠ Consistency {latest.daysStudied}% — days studied matters more than cards/day. Aim for 80%+, even if some days are 5 minutes.
+                  ⚠ Consistency {latest.rrtk.daysStudied}% — days studied matters more than cards/day. Aim for 80%+, even if some days are 5 minutes.
                 </p>
               )}
             </div>
@@ -372,6 +441,32 @@ export default function JapaneseStudyApp() {
             </div>
 
             <div className="card">
+              <h2>継続 <span className="en">Streak</span></h2>
+              <div className="statrow">
+                <div className="stat">
+                  <div className="n">{streak.current}<span style={{ fontSize: 14, color: "var(--soft)" }}> 🔥</span></div>
+                  <div className="l">Current days</div>
+                </div>
+                <div className="stat">
+                  <div className="n">{streak.best}</div>
+                  <div className="l">Best streak</div>
+                </div>
+              </div>
+              {streakBroken && streak.current > 0 && (
+                <p className="hint" style={{ color: "var(--hanko)" }}>Streak reset — more than a day passed since your last check-in. Starting over is normal; the habit matters more than the number.</p>
+              )}
+              <button
+                className="btn"
+                style={{ marginTop: 10, background: checkedInToday ? "var(--done)" : "var(--hanko)" }}
+                onClick={checkInToday}
+                disabled={checkedInToday}
+              >
+                {checkedInToday ? "✓ Checked in today" : "Check in — I studied today"}
+              </button>
+              <p className="hint">One tap after any study session — Anki, grammar, or even just a sentence to your friend counts.</p>
+            </div>
+
+            <div className="card">
               <h2>今日 <span className="en">Today's rhythm</span></h2>
               <p className="hint" style={{ marginTop: 0 }}>
                 ① Anki first (kana + RRTK, ~25 min) · ② one grammar section (~15 min) ·
@@ -381,34 +476,44 @@ export default function JapaneseStudyApp() {
           </>
         )}
 
-        {/* ============ LOG ============ */}
         {tab === "log" && (
           <div className="card">
             <h2>記録 <span className="en">Weekly Anki log</span></h2>
             <p className="hint" style={{ marginTop: 0, marginBottom: 12 }}>
-              Once a week: open AnkiDroid → RRTK deck → stats, and copy the numbers below.
-              Each label tells you exactly where to find it. Only kanji is required — fill what you have.
+              Once a week: open AnkiDroid → each deck's stats, and copy the numbers below.
+              RRTK is required; Kaishi is optional until you resume it.
             </p>
-            <div className="fgrid">
-              {FIELD_MAP.map(([key, label, where, ph]) => (
-                <div key={key}>
-                  <label htmlFor={key}>{label}{key === "kanji" && <span className="req"> *</span>}</label>
-                  <input id={key} inputMode="decimal" placeholder={ph} value={form[key]}
-                    onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
-                  <div className="where">{where}</div>
+            {DECK_FIELDS.map((group) => (
+              <div key={group.prefix} style={{ marginBottom: 16 }}>
+                <div className="phasehead" style={{ marginTop: 4 }}>
+                  <span className="t">{group.deck}</span>
+                  {!group.required && <span className="d" style={{ color: "var(--soft)" }}>optional</span>}
                 </div>
-              ))}
-            </div>
+                <div className="fgrid">
+                  {group.fields.map(([label, where, ph]) => {
+                    const key = group.prefix + KEY_SUFFIX[label];
+                    return (
+                      <div key={key}>
+                        <label htmlFor={key}>{label}{group.required && label === "Known" && <span className="req"> *</span>}</label>
+                        <input id={key} inputMode="decimal" placeholder={ph} value={form[key]}
+                          onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+                        <div className="where">{where}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
             <button className="btn" onClick={addLog}>Save this week</button>
             {state.logs.length > 0 && (
               <div style={{ marginTop: 14 }}>
                 {state.logs.slice(-6).reverse().map((l) => (
                   <div className="loghist" key={l.date}>
-                    <b>{l.date}</b> — 漢字 {l.kanji} · 語彙 {l.vocab}
-                    {l.retention != null && ` · ret ${l.retention}%`}
-                    {l.minutes != null && ` · ${l.minutes} min/d`}
-                    {l.daysStudied != null && ` · consistency ${l.daysStudied}%`}
-                    {l.mature != null && ` · mature ${l.mature}`}
+                    <b>{l.date}</b> — 漢字 {l.kanji}
+                    {l.rrtk?.retention != null && ` · ret ${l.rrtk.retention}%`}
+                    {l.rrtk?.daysStudied != null && ` · consistency ${l.rrtk.daysStudied}%`}
+                    {l.vocab > 0 && ` · 語彙 ${l.vocab}`}
+                    {l.kaishi?.retention != null && ` (ret ${l.kaishi.retention}%)`}
                   </div>
                 ))}
               </div>
@@ -417,7 +522,6 @@ export default function JapaneseStudyApp() {
           </div>
         )}
 
-        {/* ============ GRAMMAR ============ */}
         {tab === "grammar" && (
           <>
             <div className="card" style={{ marginBottom: 6 }}>
@@ -447,7 +551,6 @@ export default function JapaneseStudyApp() {
           </>
         )}
 
-        {/* ============ TIMELINE ============ */}
         {tab === "timeline" && (
           <>
             <div className="card">
@@ -488,4 +591,4 @@ export default function JapaneseStudyApp() {
       </nav>
     </div>
   );
-}
+      }
