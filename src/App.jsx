@@ -45,16 +45,21 @@ export default function App() {
     if (!file) return;
     setImporting(true);
     try {
-      const { deckName, cards } = await parseApkg(file);
-      const deckId = deckName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const freshCards = cards.map((c) => freshCard(c.front, c.back, { id: c.id }));
-      const existing = st.decks[deckId];
-      const merged = existing
-        ? { ...existing, cards: mergeCards(existing.cards, freshCards) }
-        : { name: deckName, cards: freshCards, imported: todayStr() };
-      save({ ...st, decks: { ...st.decks, [deckId]: merged }, start: st.start || todayStr() });
+      const { decks } = await parseApkg(file);
+      let nextDecks = { ...st.decks };
+      let totalCards = 0;
+      for (const d of decks) {
+        const deckId = d.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const freshCards = d.cards.map((c) => freshCard(c.front, c.back, { id: c.id }));
+        const existing = nextDecks[deckId];
+        nextDecks[deckId] = existing
+          ? { ...existing, cards: mergeCards(existing.cards, freshCards) }
+          : { name: d.name, cards: freshCards, imported: todayStr() };
+        totalCards += freshCards.length;
+      }
+      save({ ...st, decks: nextDecks, start: st.start || todayStr() });
       haptic("success");
-      flash(`Imported ${freshCards.length} cards from ${deckName}`);
+      flash(`Imported ${totalCards} cards across ${decks.length} deck${decks.length !== 1 ? "s" : ""}`);
     } catch (err) {
       haptic("error");
       flash(err.message || "Import failed — check the file is a valid .apkg");
