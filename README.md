@@ -3,9 +3,6 @@
 This is your Japanese study tracker as a real, standalone web app —
 no Claude branding, true fullscreen when installed to a homescreen.
 
-Hand this whole folder to whoever's doing the deploy (you, a teammate,
-your dad). It takes about 10 minutes and is entirely free.
-
 ## Option A — Vercel (recommended, easiest)
 
 1. Create a free account at https://vercel.com (can sign in with GitHub).
