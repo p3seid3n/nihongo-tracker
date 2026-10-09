@@ -38,13 +38,16 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 ## How it works
 
 * **Scheduler:** FSRS-6 with the default weights, learning steps 1 m / 10 m, relearning 10 m, day starts at 4 am, deterministic fuzz, target retention 85/90/95 % (Settings).
-* **Today:** reviews first, new cards woven in, then the next grammar lesson, a grammar refresher, and sentence reading from your own vocabulary cards.
+* **Today:** reviews first, new cards woven in, then the next grammar lesson, a grammar refresher, and sentence practice built from your own vocabulary cards.
 * **Lessons:** 45 lessons in the order of Tae Kim's Guide (CC BY-NC-SA 3.0, personal non-commercial use with attribution). Explanations and example sentences are written for this app. Practice sentences are generated from a word bank and weighted towards words you are shaky on. Lessons are scheduled with FSRS too, so grammar comes back for review. Units can be tested out of.
+* **Kanji font:** Settings → Reading and look. Classic (the system's Mincho, default), Clear (Noto Sans JP) and Textbook (Klee One). The two extra fonts are SIL OFL, copied from the `@fontsource` packages into `public/fonts/` by `scripts/build-fonts.mjs` (runs on build), split into small slices and fetched the first time they are needed, then cached for offline use.
+* **Layout:** full-screen views (study, lessons, import) never scroll as a whole page; only their content area does, so the top bar and the answer buttons stay put, and the page behind sheets is locked.
 * **Furigana:** shown only for kanji you have not learned yet (kanji cards you graduated, plus kanji in well-known words). Change in Settings.
 * **Sync:** offline-first. Each part of your data (settings, decks, progress per deck, review log per month) is merged by timestamp, so two devices never overwrite each other's reviews. Signing in on a device that already has data asks whether to combine or replace.
 * **Motion:** follows Material 3 Expressive. Movement of things (cards, sheets, the nav pill, bars) uses springs that overshoot slightly; fades and colour use springs that settle without bounce. The spring curves are generated as CSS `linear()` easings (`npm run springs` regenerates `src/springs.css`). Sheets can be dragged down and settle with the speed of your finger. Settings → Animations → Reduced (or your device's reduce-motion setting) turns it down.
 * **Haptics:** a light tick on every control, patterns for Again / Hard / Good / Easy, right and wrong answers, and finishing. Android (Chrome) uses the Vibration API. iPhone Safari 17.4 and newer has no vibration API, so a hidden switch control is toggled to get the system tick. Desktop browsers don't vibrate. Settings → Haptic feedback has a test row.
-* **Listening:** cards read the word when they appear and the example sentence when you reveal the answer (switch off in Settings). Without recordings the phone's Japanese voice is used. If the device has no Japanese voice the app stays silent instead of reading Japanese with the wrong voice; Settings explains how to install one.
+* **Sentence practice:** mixed exercises from the example sentences of cards you have started: match words, pick the meaning, fill the gap, choose the right form of a verb or adjective (or the sentence that matches the English), and build the Japanese from tiles. Every sentence is segmented against your decks (`src/lib/lexicon.js`). A sentence is only used when every word is in one of your decks and at most four words, forms or grammar points are not learned yet; those get a small English gloss above them. Grammar counts as learned once its lesson is done. Tap any word for a popup with reading, meaning, the weakest kanji's story, and a speaker button. Limits: roughly two thirds of Kaishi's sentences are fully explainable; early on, before the grammar lessons are done, many words show glosses and some sentences are skipped; particle-swap questions are deliberately not generated because the wrong particle can still make a valid sentence.
+* **Listening:** by default cards read the word when they appear and the example sentence when you reveal the answer. Settings → Listening and speaking lets you read the word on card open, with the answer, or never, and the sentence with the answer or never. Without recordings the phone's Japanese voice is used. If the device has no Japanese voice the app stays silent instead of reading Japanese with the wrong voice; Settings explains how to install one.
 * **Pronunciation check:** the microphone button on a card listens through the browser's speech recognition (ja-JP) and compares what it heard with the word or sentence, character by character, with a score. Kanji written in kana by the recogniser still count when the reading is known. Limits: Chrome/Android sends the audio to Google's recogniser, so it needs a connection; Safari and installed iPhone apps may not allow recognition at all, in which case the sheet falls back to recording you so you can compare by ear.
 * **Writing practice:** "Write N characters" on Today, plus a pen button on kana and kanji cards. Trace with a stroke-by-stroke guide, or write from memory; strokes must be drawn in the right order and direction (the app says which stroke was expected), with hints and an animated demo. Stroke data is KanjiVG (© Ulrich Apel, CC BY-SA 3.0), built into `public/strokes/` by `node scripts/build-strokes.mjs`, fetched per character when first needed and cached for offline use.
 * **Backups:** Settings → Export backup (JSON). Restore merges.
@@ -54,12 +57,12 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 ```
 npm install
 npm run dev        # local
-npm test           # unit tests (414)
+npm test           # unit tests (437)
 npm run build
 node scripts/make-icons.mjs   # regenerate icons
 node scripts/build-strokes.mjs # regenerate public/strokes from KanjiVG
 # browser tests (need Chromium; start `npx vite preview --port 4173` first)
-node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud
+node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud, sentences, layout, settings-prefs
 ```
 
 Keyboard in a study session: Space = show answer / Good, 1–4 = grade, Z = undo.

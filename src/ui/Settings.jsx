@@ -5,10 +5,11 @@ import { signOut, cloudConfigured } from "../lib/auth.js";
 import { setHaptics, canHaptic, onIOS } from "../lib/haptics.js";
 import * as hap from "../lib/haptics.js";
 import { SOURCE } from "../content/lessons.js";
-import { loadVoices, pickVoice, say, getAudioInfo, clearAudio, ttsSupported } from "../lib/audio.js";
+import { loadVoices, pickVoice, say, getAudioInfo, clearAudio, ttsSupported, audioPlan } from "../lib/audio.js";
+import { KANJI_FONTS, ensureFont } from "../lib/fonts.js";
 import { recognitionSupported, recordingSupported } from "../lib/pronounce.js";
 
-export const APP_VERSION = "4.1.0";
+export const APP_VERSION = "4.2.0";
 
 function Row({ title, sub, children }) {
   return (
@@ -40,6 +41,7 @@ function AudioSection({ s, set }) {
     return () => { alive = false; };
   }, []);
   const cur = pickVoice(voices || [], s.voiceURI);
+  const plan = audioPlan(s);
   const removeAudio = async () => {
     const ok = await confirm({ title: "Remove downloaded audio?", body: "The native audio clips are deleted from this device. Cards will use the built-in Japanese voice instead. Re-import your Anki file to get them back.", confirm: "Remove", danger: true });
     if (!ok) return;
@@ -50,7 +52,14 @@ function AudioSection({ s, set }) {
   const mb = Math.max(1, Math.round(info.bytes / 1e6));
   return (
     <Section title="Listening and speaking" hint={voices && !voices.length && ttsSupported ? "No Japanese voice was found on this device. Android: Settings → System → Languages → Text-to-speech → install Japanese. iPhone: Settings → Accessibility → Spoken Content → Voices → Japanese." : "Imported decks with audio (like Kaishi) use the original recordings. Everything else uses your device's Japanese voice."}>
-      <Row title="Play audio automatically" sub="Reads the word when a card appears and the example sentence when you reveal it"><Switch checked={s.autoplay} onChange={(v) => set({ autoplay: v })} label="Play audio automatically" /></Row>
+      <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+        <div><div>Read the word aloud</div><div className="small dim">The speaker button always plays it on demand</div></div>
+        <Seg label="Word audio" value={plan.word} onChange={(v) => set({ audioWord: v })} options={[{ value: "front", label: "On card open" }, { value: "reveal", label: "With the answer" }, { value: "off", label: "Off" }]} />
+      </div>
+      <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+        <div><div>Read the example sentence aloud</div><div className="small dim">Vocabulary cards with a sentence</div></div>
+        <Seg label="Sentence audio" value={plan.sentence} onChange={(v) => set({ audioSentence: v })} options={[{ value: "reveal", label: "With the answer" }, { value: "off", label: "Off" }]} />
+      </div>
       <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
         <div><div>Voice speed</div><div className="small dim">For the built-in voice and playback of clips</div></div>
         <Seg label="Voice speed" value={String(s.speechRate)} onChange={(v) => set({ speechRate: Number(v) })} options={[{ value: "0.75", label: "Slow" }, { value: "1", label: "Normal" }, { value: "1.15", label: "Fast" }]} />
@@ -78,6 +87,24 @@ function AudioSection({ s, set }) {
         <Row title="Native audio" sub="Importing a deck with audio (like Kaishi) in Cards → Import Anki deck adds the original recordings. Already imported? Import the same file again, your progress stays." />
       )}
     </Section>
+  );
+}
+
+function KanjiFontPicker({ value, onChange }) {
+  useEffect(() => { KANJI_FONTS.forEach((f) => ensureFont(f.id)); }, []); // so each choice previews in its own face
+  return (
+    <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+      <div><div>Kanji font</div><div className="small dim">For the big characters on cards. Pick the one where small parts, like the water drops in 泊, are easiest to see.</div></div>
+      <div className="font-picks" role="radiogroup" aria-label="Kanji font">
+        {KANJI_FONTS.map((f) => (
+          <button key={f.id} type="button" role="radio" aria-checked={value === f.id} className={`font-pick ${value === f.id ? "on" : ""}`} onClick={() => onChange(f.id)}>
+            <span className="font-sample" lang="ja" style={{ fontFamily: `var(--kf-${f.id})` }}>泊書魚</span>
+            <b>{f.label}</b>
+            <span className="small dim">{f.sub}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -196,6 +223,7 @@ export function Settings() {
           <div><div>Furigana</div><div className="small dim">Auto hides readings for kanji you already know</div></div>
           <Seg label="Furigana" value={s.furigana} onChange={(v) => set({ furigana: v })} options={[{ value: "auto", label: "Auto" }, { value: "always", label: "Always" }, { value: "never", label: "Never" }]} />
         </div>
+        <KanjiFontPicker value={s.kanjiFont || "mincho"} onChange={(v) => set({ kanjiFont: v })} />
         <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
           <div>Theme</div>
           <Seg label="Theme" value={s.theme} onChange={(v) => set({ theme: v })} options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }, { value: "system", label: "System" }]} />
@@ -231,7 +259,7 @@ export function Settings() {
         <button className="list-item" style={{ color: "var(--rose)" }} onClick={doReset}><Icon name="trash" /><span className="grow">Erase all data on this device</span></button>
       </Section>
 
-      <p className="tiny faint" style={{ padding: "0 8px" }}>Grammar lessons follow the order of <a href={SOURCE.url} target="_blank" rel="noreferrer">{SOURCE.name}</a> by Tae Kim, licensed {SOURCE.license}. Spaced repetition uses the open FSRS algorithm. Stroke order data is from <a href="https://kanjivg.tagaini.net" target="_blank" rel="noreferrer">KanjiVG</a> (CC BY-SA 3.0).</p>
+      <p className="tiny faint" style={{ padding: "0 8px" }}>Grammar lessons follow the order of <a href={SOURCE.url} target="_blank" rel="noreferrer">{SOURCE.name}</a> by Tae Kim, licensed {SOURCE.license}. Spaced repetition uses the open FSRS algorithm. Stroke order data is from <a href="https://kanjivg.tagaini.net" target="_blank" rel="noreferrer">KanjiVG</a> (CC BY-SA 3.0). Noto Sans JP and Klee One fonts are licensed under the SIL Open Font License.</p>
     </div>
   );
 }

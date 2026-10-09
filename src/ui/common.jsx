@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Icon } from "./icons.jsx";
 import { springAnimate } from "../lib/motion.js";
 import * as hap from "../lib/haptics.js";
+import { lockScroll } from "../lib/scrollLock.js";
 
 export const AppCtx = createContext(null);
 /** True while a full-screen view covers the tabs: they stay mounted underneath (so closing is instant and
@@ -135,6 +136,7 @@ function useSheetDrag(onClose) {
 
 /** Bottom sheet. Closes on scrim tap, Escape and drag-down. */
 export function Sheet({ title, onClose, children, actions }) {
+  useEffect(() => lockScroll(), []);
   useEffect(() => {
     const k = (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } }; // the view underneath must not also react
     document.addEventListener("keydown", k);

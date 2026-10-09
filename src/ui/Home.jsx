@@ -89,8 +89,8 @@ export function Home() {
         {grammarOn && stats.lessonsDue > 0 && (
           <Step icon="refresh" title={`Review grammar`} sub={`${plural(stats.lessonsDue, "lesson")} ready for a quick refresher`} onClick={() => open({ type: "review" })} />
         )}
-        {grammarOn && pool.length >= 8 && (
-          <Step icon="book" title="Read your own sentences" sub="Sentences from your vocabulary cards" onClick={() => open({ type: "sentences" })} />
+        {grammarOn && pool.length >= 6 && (
+          <Step icon="book" title="Sentence practice" sub="Translate, fill gaps and pick the right form, using only what you know" onClick={() => open({ type: "sentences" })} />
         )}
       </section>
 

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
+import { TokLine } from "./WordTap.jsx";
 import { checkBuild } from "../lib/exercises.js";
 import { plainOf } from "../lib/jp.js";
 import * as hap from "../lib/haptics.js";
@@ -51,11 +52,13 @@ function Choose({ ex, onDone }) {
     setVerdict({ correct: ok, answer: correct.text, explain: ex.explain });
   };
   const hasBlank = p.blank != null && p.jp;
+  const selText = ex.options.find((o) => o.id === sel)?.text;
   return (
     <>
       <div className="q-instr">{ex.instruction}</div>
-      {(p.word || p.jp || p.text) && (
+      {(p.word || p.jp || p.text || p.toks) && (
         <div className="q-prompt">
+          {p.toks && <><TokLine toks={p.toks} blank={p.blank} fill={verdict ? correct.text : selText} filled={!!(sel || verdict)} />{p.blank != null && p.en && <span className="dim">{p.en}</span>}</>}
           {p.word && <><span className="word" lang="ja"><Furi m={p.word} /></span>{p.wordEn && <span className="dim">{p.wordEn}</span>}</>}
           {hasBlank && <><Sentence jp={p.jp} blank={p.blank} fill={verdict || sel ? ex.options.find((o) => o.id === sel)?.text : null} filled={!!sel} />{p.en && <span className="dim">{p.en}</span>}</>}
           {!hasBlank && p.jp && <Sentence jp={p.jp} />}
@@ -83,6 +86,16 @@ function Choose({ ex, onDone }) {
   );
 }
 
+/** A word tile; words you have not learned yet show their translation above. */
+function Tile({ b, used, disabled, onClick }) {
+  return (
+    <button type="button" className={`tilebtn ${used ? "used" : ""} ${b.gloss ? "has-g" : ""}`} lang="ja" disabled={disabled} onClick={onClick}>
+      {b.gloss ? <span className="tk-g">{b.gloss}</span> : null}
+      <span><Furi m={b.m} /></span>
+    </button>
+  );
+}
+
 function Build({ ex, onDone }) {
   const [picked, setPicked] = useState([]); // bank ids in order
   const [verdict, setVerdict] = useState(null);
@@ -100,10 +113,10 @@ function Build({ ex, onDone }) {
       <div className="q-instr">{ex.instruction}</div>
       <div className="q-prompt"><span className="big">{ex.prompt.en}</span></div>
       <div className="tile-zone answer-zone" aria-label="Your sentence">
-        {picked.map((id) => <button key={id} className="tilebtn" lang="ja" onClick={() => remove(id)}><Furi m={byId[id].m} /></button>)}
+        {picked.map((id) => <Tile key={id} b={byId[id]} lang="ja" onClick={() => remove(id)} />)}
       </div>
       <div className="tile-zone" aria-label="Word bank" style={{ borderStyle: "none", background: "transparent", padding: 0 }}>
-        {ex.bank.map((b) => <button key={b.id} className={`tilebtn ${picked.includes(b.id) ? "used" : ""}`} lang="ja" disabled={picked.includes(b.id) || !!verdict} onClick={() => add(b.id)}><Furi m={b.m} /></button>)}
+        {ex.bank.map((b) => <Tile key={b.id} b={b} used={picked.includes(b.id)} disabled={picked.includes(b.id) || !!verdict} onClick={() => add(b.id)} />)}
       </div>
       <Footer canCheck={picked.length > 0} onCheck={check} verdict={verdict} onContinue={() => onDone(verdict.correct)} />
     </>

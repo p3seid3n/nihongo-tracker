@@ -24,7 +24,7 @@ function serviceWorker() {
       walk(outDir);
       const manifest = files
         .map((f) => path.relative(outDir, f).split(path.sep).join("/"))
-        .filter((f) => f !== "sw.js" && !f.endsWith(".map") && !f.startsWith("strokes/")) // stroke data is fetched when first needed
+        .filter((f) => f !== "sw.js" && !f.endsWith(".map") && !f.startsWith("strokes/") && !f.startsWith("fonts/")) // stroke data and optional fonts are fetched when first needed
         .map((f) => ({
           url: f === "index.html" ? "./" : f,
           rev: crypto.createHash("md5").update(fs.readFileSync(path.join(outDir, f))).digest("hex").slice(0, 10),

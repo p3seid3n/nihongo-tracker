@@ -24,7 +24,8 @@ export const DEFAULT_SETTINGS = {
   furigana: "auto", // auto | always | never
   theme: "dark", // dark | light | system
   haptics: true,
-  autoplay: true,
+  autoplay: true, // legacy switch. audioWord (front | reveal | off) and audioSentence (reveal | off) take over once chosen in Settings
+  kanjiFont: "mincho",
   speechRate: 1,
   voiceURI: "",
   motion: "full",

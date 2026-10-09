@@ -3,6 +3,7 @@ const VERSION = "__VERSION__";
 const CACHE = "nt4-" + VERSION;
 const PRECACHE = __PRECACHE__;
 const STROKES = "nt-strokes-v1"; // kanji stroke data: cached when first used, kept across app versions
+const FONTS = "nt-fonts-v1"; // optional kanji fonts (Settings): cached when first used
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -26,7 +27,7 @@ self.addEventListener("activate", (event) => {
     (async () => {
       // remove every older cache, including the ones from previous app versions (nihongo-v3 etc.)
       const names = await caches.keys();
-      await Promise.all(names.filter((n) => n !== CACHE && n !== STROKES).map((n) => caches.delete(n)));
+      await Promise.all(names.filter((n) => n !== CACHE && n !== STROKES && n !== FONTS).map((n) => caches.delete(n)));
       await self.clients.claim();
     })()
   );
@@ -38,10 +39,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // API calls (Supabase) go straight to the network
 
-  if (url.pathname.startsWith("/strokes/")) {
+  if (url.pathname.startsWith("/strokes/") || url.pathname.startsWith("/fonts/")) {
+    const store = url.pathname.startsWith("/fonts/") ? FONTS : STROKES;
     event.respondWith(
       (async () => {
-        const cache = await caches.open(STROKES);
+        const cache = await caches.open(store);
         const hit = await cache.match(req, { ignoreSearch: true });
         if (hit) return hit;
         try {

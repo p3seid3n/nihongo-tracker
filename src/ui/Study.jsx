@@ -9,7 +9,7 @@ import { deckOf } from "../lib/ids.js";
 import { kanjiOf } from "../lib/jp.js";
 import { computeStats } from "../lib/stats.js";
 import * as hap from "../lib/haptics.js";
-import { say, stop as stopAudio, wordPart, sentencePart } from "../lib/audio.js";
+import { audioPlan, say, stop as stopAudio, wordPart, sentencePart } from "../lib/audio.js";
 import { plainOf, readingOf } from "../lib/jp.js";
 import { SpeakBtn, MicBtn } from "./Voice.jsx";
 import { unitsFromMarkup } from "../lib/pronounce.js";
@@ -137,12 +137,20 @@ export function Study({ opts = {}, onClose, onOpen }) {
   }, [card, deck]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- listening: read the word when a card appears, the example sentence when it is revealed
-  const autoplay = store.settings.autoplay;
+  const plan = audioPlan(store.settings);
   const cardKey = cur ? `${cur.id}-${tally[1] + tally[2] + tally[3] + tally[4]}` : "";
   const wp = useMemo(() => (card ? wordPart(card, deck?.kind) : null), [card, deck]);
   const sp = useMemo(() => (card && deck?.kind === "vocab" ? sentencePart(card) : null), [card, deck]);
-  useEffect(() => { if (autoplay && wp) say(wp); else stopAudio(); }, [cardKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (autoplay && shown && sp) say(sp); }, [shown]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (plan.word === "front" && wp) say(wp); else stopAudio(); }, [cardKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!shown) return undefined;
+    let alive = true;
+    (async () => {
+      if (plan.word === "reveal" && wp) await say(wp);
+      if (alive && plan.sentence === "reveal" && sp) await say(sp);
+    })();
+    return () => { alive = false; };
+  }, [shown]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => stopAudio(), []);
   const sayItems = useMemo(() => {
     if (!card) return [];
@@ -177,15 +185,19 @@ export function Study({ opts = {}, onClose, onOpen }) {
 
         <div className="study-body">
           <div className="flash card-in" key={cardKey} onClick={!shown ? reveal : undefined}>
-            <span className="chip tag">{deck?.name || ""}</span>
-            <div className="flash-tools">
-              {wp && <SpeakBtn part={wp} label="Play the word" />}
-              {sayItems.length > 0 && <MicBtn items={sayItems} />}
-              <WriteBtn text={card.f} title={card.m} sub={card.r && kind !== "kana" ? card.r : "Stroke order"} />
+            <div className="flash-head">
+              <span className="chip tag">{deck?.name || ""}</span>
+              <div className="flash-tools">
+                {wp && <SpeakBtn part={wp} label="Play the word" />}
+                {sayItems.length > 0 && <MicBtn items={sayItems} />}
+                <WriteBtn text={card.f} title={card.m} sub={card.r && kind !== "kana" ? card.r : "Stroke order"} />
+              </div>
             </div>
-            <Front kind={kind} card={card} />
-            {shown && <Back kind={kind} card={card} related={related} />}
-            {!shown && <span className="reveal-hint">Tap to show the answer</span>}
+            <div className="flash-scroll">
+              <Front kind={kind} card={card} />
+              {shown && <Back kind={kind} card={card} related={related} />}
+              {!shown && <span className="reveal-hint">Tap to show the answer</span>}
+            </div>
           </div>
           {!shown ? (
             <button className="btn btn-primary show-btn btn-block" data-haptic="none" onClick={reveal}>Show answer</button>

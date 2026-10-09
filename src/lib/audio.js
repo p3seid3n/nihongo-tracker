@@ -174,3 +174,12 @@ export const markupPart = (markup) => {
   const text = plainOf(String(markup || "").replace(/\|/g, "").replace(/\*/g, "").replace(/^=/, "")).replace(/\s+/g, "");
   return text ? { file: "", text } : null;
 };
+
+/** When to read aloud automatically. Older versions had one on/off switch (autoplay). */
+export function audioPlan(s) {
+  const off = s && s.autoplay === false;
+  return {
+    word: (s && s.audioWord) || (off ? "off" : "front"), // front | reveal | off
+    sentence: (s && s.audioSentence) || (off ? "off" : "reveal"), // reveal | off
+  };
+}

@@ -7,6 +7,8 @@ import { getSession, onAuthChange, signOut } from "./lib/auth.js";
 import { knownKanjiSet } from "./lib/personal.js";
 import { setHaptics, tick, onIOS, canHaptic } from "./lib/haptics.js";
 import { setAudioPrefs, unlockAudio } from "./lib/audio.js";
+import { lockScroll } from "./lib/scrollLock.js";
+import { applyKanjiFont } from "./lib/fonts.js";
 import { AppCtx, PauseCtx, ConfirmSheet, Toasts, useToasts, Banner } from "./ui/common.jsx";
 import { Icon } from "./ui/icons.jsx";
 import { Auth } from "./ui/Auth.jsx";
@@ -237,6 +239,8 @@ export default function App() {
   }, []);
   const motionSetting = store.settings.motion;
   useEffect(() => { document.documentElement.dataset.motion = motionSetting === "reduced" ? "reduced" : "full"; }, [motionSetting]);
+  const kanjiFontSetting = store.settings.kanjiFont;
+  useEffect(() => { applyKanjiFont(kanjiFontSetting || "mincho"); }, [kanjiFontSetting]);
 
   // a light tick under the finger for any control (anything with its own haptic opts out via data-haptic="none")
   useEffect(() => {
@@ -266,6 +270,9 @@ export default function App() {
     store, sync, session, cloud: cloudConfigured, known, open, close, go, toast, confirm, resetCaches,
   }), [store, sync, session, known, open, close, go, toast, confirm]);
 
+  // the page behind a full-screen view never scrolls
+  useEffect(() => (overlay || ghost ? lockScroll() : undefined), [!!(overlay || ghost)]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ---- render
   if (phase === "loading") return <Splash />;
   if (phase === "fatal") {
@@ -282,11 +289,11 @@ export default function App() {
 
   let body;
   if (recovery) {
-    body = <Auth recovery onDone={() => { setRecovery(false); toast("Password updated."); }} />;
+    body = <div className="screen"><Auth recovery onDone={() => { setRecovery(false); toast("Password updated."); }} /></div>;
   } else if (pulling) {
     body = <Splash text="Loading your data…" />;
   } else if (!store.settings.onboarded) {
-    body = <Onboarding store={store} onFinish={() => { setTab("home"); window.scrollTo(0, 0); }} onSignIn={() => open({ type: "auth" })} />;
+    body = <div className="screen"><Onboarding store={store} onFinish={() => { setTab("home"); window.scrollTo(0, 0); }} onSignIn={() => open({ type: "auth" })} /></div>;
   } else {
     body = (
       <div className="app" inert={overlay ? "" : undefined} aria-hidden={overlay ? "true" : undefined}>

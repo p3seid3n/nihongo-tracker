@@ -4,7 +4,8 @@ import { Furi, Sentence } from "./Furi.jsx";
 import { Rich, ExerciseRunner } from "./Exercises.jsx";
 import { useApp, useNow, PageHead, plural, Sheet, Burst } from "./common.jsx";
 import { UNITS, LESSONS, LESSON_BY_ID, SOURCE } from "../content/lessons.js";
-import { buildLessonExercises, buildReviewExercises, sentenceExercises, lessonExamples } from "../lib/exercises.js";
+import { buildLessonExercises, buildReviewExercises, lessonExamples } from "../lib/exercises.js";
+import { buildSentenceSession } from "../lib/sentenceEx.js";
 import { mulberry32, shuffle } from "../content/generators.js";
 import { makeWeight, sentencePool } from "../lib/personal.js";
 import { currentRetrievability } from "../lib/fsrs.js";
@@ -36,9 +37,9 @@ export function Learn() {
       <PageHead title="Grammar" right={<span className="chip">{done} / {LESSONS.length}</span>} />
       <div className="row-wrap">
         <button className="btn btn-tonal" disabled={!done} onClick={() => open({ type: "review" })}><Icon name="refresh" /> Review{due.length ? ` (${due.length} due)` : ""}</button>
-        <button className="btn btn-soft" disabled={pool.length < 8} onClick={() => open({ type: "sentences" })}><Icon name="book" /> Read sentences</button>
+        <button className="btn btn-soft" disabled={pool.length < 6} onClick={() => open({ type: "sentences" })}><Icon name="book" /> Sentence practice</button>
       </div>
-      {pool.length < 8 && <p className="hint" style={{ marginTop: -8 }}>Sentence reading unlocks once you have studied a few vocabulary cards with example sentences.</p>}
+      {pool.length < 6 && <p className="hint" style={{ marginTop: -8 }}>Sentence practice unlocks once you have studied a few vocabulary cards with example sentences.</p>}
 
       <div className="path">
         {UNITS.map((u) => {
@@ -223,7 +224,7 @@ export function PracticePlayer({ mode, unitId, onClose }) {
   const [state] = useState(() => {
     const ctx = makeCtx(store);
     try {
-      if (mode === "sentences") return { list: sentenceExercises(sentencePool(store), ctx.rng, 8) };
+      if (mode === "sentences") return { list: buildSentenceSession(store, ctx.rng, { n: 10 }).list };
       if (mode === "testout") {
         const ls = LESSONS.filter((l) => l.unit === unitId);
         return { list: buildReviewExercises(ls, ctx, 10), lessons: ls };
@@ -284,5 +285,5 @@ export function PracticePlayer({ mode, unitId, onClose }) {
       </Shell>
     );
   }
-  return <Shell><ExerciseRunner exercises={state.list} onFinish={finish} onClose={onClose} title={mode === "sentences" ? "Reading" : mode === "testout" ? "Test out" : "Review"} /></Shell>;
+  return <Shell><ExerciseRunner exercises={state.list} onFinish={finish} onClose={onClose} title={mode === "sentences" ? "Sentences" : mode === "testout" ? "Test out" : "Review"} /></Shell>;
 }
