@@ -1,8 +1,10 @@
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Banner, Stepper, Switch, useApp, plural, fmtNum } from "./common.jsx";
 import { parseApkg, applyImport } from "../lib/importer/apkg.js";
 import { loadSQL } from "../lib/importer/sqljs.js";
+import { planAudio, extractAudio } from "../lib/importer/media.js";
+import { putClip, addAudioInfo } from "../lib/audio.js";
 
 const PHASES = { unzip: "Unpacking the file", open: "Starting the database engine", read: "Reading your cards", done: "Done" };
 const KINDS = [{ v: "kanji", l: "Kanji" }, { v: "vocab", l: "Vocabulary" }, { v: "kana", l: "Kana" }];
@@ -19,9 +21,14 @@ export function ImportWizard({ onClose, onOpen }) {
   const [added, setAdded] = useState(0);
   const [pausedDecks, setPausedDecks] = useState([]);
   const input = useRef(null);
+  const fileRef = useRef(null);
+  const [withAudio, setWithAudio] = useState(true);
+  const [audioProg, setAudioProg] = useState({ value: 0, stored: 0 });
+  const [audioDone, setAudioDone] = useState(null);
 
   const run = async (file) => {
     if (!file) return;
+    fileRef.current = file;
     setName(file.name); setErr(""); setStage("parsing"); setProgress({ phase: "unzip", value: 0 });
     try {
       const p = await parseApkg(file, loadSQL, setProgress);
@@ -56,7 +63,13 @@ export function ImportWizard({ onClose, onOpen }) {
         }
         setPausedDecks(paused);
         setAdded(n);
-        setStage("done");
+        const wanted = plan && withAudio && plan.files.length ? plan : null;
+        if (!wanted || !fileRef.current) { setStage("done"); return; }
+        setStage("audio");
+        setAudioProg({ value: 0, stored: 0 });
+        extractAudio(fileRef.current, wanted.files, putClip, (value, stored) => setAudioProg({ value, stored }))
+          .then(async (r) => { await addAudioInfo(r.stored, wanted.files.reduce((a, f) => a + f.size, 0)); setAudioDone(r); setStage("done"); })
+          .catch((e) => { console.error(e); setAudioDone({ stored: 0, failed: wanted.files.length, error: true }); setStage("done"); });
       } catch (e) {
         console.error(e);
         setErr("Import failed: " + (e && e.message ? e.message : e));
@@ -66,6 +79,7 @@ export function ImportWizard({ onClose, onOpen }) {
   };
 
   const chosen = parsed ? parsed.decks.filter((d) => sel[d.id]?.include) : [];
+  const plan = useMemo(() => (parsed ? planAudio(chosen, parsed.mediaList || []) : null), [parsed, sel]); // eslint-disable-line react-hooks/exhaustive-deps
   const hasRevlog = parsed && parsed.revlog.length > 0;
 
   return (
@@ -151,6 +165,12 @@ export function ImportWizard({ onClose, onOpen }) {
                 <Switch checked={history} onChange={setHistory} label="Import review history" />
               </div>
             )}
+            {plan && plan.files.length > 0 && (
+              <div className="card spread">
+                <div className="grow"><b>Include audio</b><div className="small dim">{fmtNum(plan.files.length)} recordings, about {Math.max(1, Math.round(plan.bytes / 1e6))} MB. Kept on this device only; other devices use the built-in voice.</div></div>
+                <Switch checked={withAudio} onChange={setWithAudio} label="Include audio" />
+              </div>
+            )}
             {parsed.warnings?.length > 0 && <Banner icon="info">{parsed.warnings.slice(0, 3).join(" ")}</Banner>}
             <div className="sticky-actions">
               <button className="btn btn-primary btn-lg btn-block" disabled={!chosen.length} onClick={doImport}>Import {plural(chosen.length, "deck")}</button>
@@ -165,10 +185,26 @@ export function ImportWizard({ onClose, onOpen }) {
           </div>
         )}
 
+        {stage === "audio" && (
+          <div className="stack center" style={{ alignItems: "center", paddingTop: 60 }}>
+            <div className="ring" style={{ width: 96, height: 96 }}>
+              <svg width="96" height="96" viewBox="0 0 96 96">
+                <circle className="track" cx="48" cy="48" r="42" strokeWidth="8" />
+                <circle className="value" cx="48" cy="48" r="42" strokeWidth="8" strokeDasharray={2 * Math.PI * 42} strokeDashoffset={2 * Math.PI * 42 * (1 - audioProg.value)} />
+              </svg>
+              <div className="ring-label"><b>{Math.round(audioProg.value * 100)}%</b></div>
+            </div>
+            <h2>Saving audio…</h2>
+            <p className="dim small">{fmtNum(audioProg.stored)} of {fmtNum(plan?.files.length || 0)} recordings</p>
+            <p className="hint">Keep this screen open. Your cards are already imported.</p>
+          </div>
+        )}
+
         {stage === "done" && (
           <div className="stack center" style={{ alignItems: "center", paddingTop: 40 }}>
             <div className="big jp" lang="ja" style={{ fontSize: "4rem", color: "var(--primary)" }}>完了</div>
             <h1>Imported {fmtNum(added)} cards</h1>
+            {audioDone && <p className="dim">{audioDone.error ? "The audio couldn't be saved, so cards will use the built-in voice." : `${fmtNum(audioDone.stored)} audio recordings saved${audioDone.failed ? `, ${fmtNum(audioDone.failed)} could not be read` : ""}.`}</p>}
             <p className="dim">Your decks are ready. Cards you marked as known will come back for a quick check over the next days.</p>
             {pausedDecks.length > 0 && <p className="hint">The built-in {pausedDecks.join(" and ")} deck{pausedDecks.length > 1 ? "s are" : " is"} paused so you don't study the same characters twice. You can turn {pausedDecks.length > 1 ? "them" : "it"} back on in Cards.</p>}
             <div className="stack" style={{ width: "100%", marginTop: 24 }}>

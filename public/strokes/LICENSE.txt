@@ -1,0 +1,3 @@
+Stroke data: KanjiVG, Copyright (C) 2009-2024 Ulrich Apel and contributors, licensed under Creative Commons Attribution-ShareAlike 3.0.
+https://kanjivg.tagaini.net  https://creativecommons.org/licenses/by-sa/3.0/
+Converted to compact JSON for Nihongo Tracker (stroke centre lines only).

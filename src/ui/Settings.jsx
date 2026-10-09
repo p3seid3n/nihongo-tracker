@@ -1,12 +1,14 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Switch, Seg, Stepper, Banner, useApp, PageHead, plural } from "./common.jsx";
 import { signOut, cloudConfigured } from "../lib/auth.js";
 import { setHaptics, canHaptic, onIOS } from "../lib/haptics.js";
 import * as hap from "../lib/haptics.js";
 import { SOURCE } from "../content/lessons.js";
+import { loadVoices, pickVoice, say, getAudioInfo, clearAudio, ttsSupported } from "../lib/audio.js";
+import { recognitionSupported, recordingSupported } from "../lib/pronounce.js";
 
-export const APP_VERSION = "4.0.0";
+export const APP_VERSION = "4.1.0";
 
 function Row({ title, sub, children }) {
   return (
@@ -24,6 +26,58 @@ function Section({ title, children, hint }) {
       <div className="list">{children}</div>
       {hint && <p className="hint" style={{ margin: "0 8px" }}>{hint}</p>}
     </section>
+  );
+}
+
+function AudioSection({ s, set }) {
+  const { confirm, toast } = useApp();
+  const [voices, setVoices] = useState(null);
+  const [info, setInfo] = useState({ count: 0, bytes: 0 });
+  useEffect(() => {
+    let alive = true;
+    loadVoices().then((v) => alive && setVoices(v));
+    getAudioInfo().then((i) => alive && setInfo(i));
+    return () => { alive = false; };
+  }, []);
+  const cur = pickVoice(voices || [], s.voiceURI);
+  const removeAudio = async () => {
+    const ok = await confirm({ title: "Remove downloaded audio?", body: "The native audio clips are deleted from this device. Cards will use the built-in Japanese voice instead. Re-import your Anki file to get them back.", confirm: "Remove", danger: true });
+    if (!ok) return;
+    await clearAudio();
+    setInfo({ count: 0, bytes: 0 });
+    toast("Audio removed.");
+  };
+  const mb = Math.max(1, Math.round(info.bytes / 1e6));
+  return (
+    <Section title="Listening and speaking" hint={voices && !voices.length && ttsSupported ? "No Japanese voice was found on this device. Android: Settings → System → Languages → Text-to-speech → install Japanese. iPhone: Settings → Accessibility → Spoken Content → Voices → Japanese." : "Imported decks with audio (like Kaishi) use the original recordings. Everything else uses your device's Japanese voice."}>
+      <Row title="Play audio automatically" sub="Reads the word when a card appears and the example sentence when you reveal it"><Switch checked={s.autoplay} onChange={(v) => set({ autoplay: v })} label="Play audio automatically" /></Row>
+      <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+        <div><div>Voice speed</div><div className="small dim">For the built-in voice and playback of clips</div></div>
+        <Seg label="Voice speed" value={String(s.speechRate)} onChange={(v) => set({ speechRate: Number(v) })} options={[{ value: "0.75", label: "Slow" }, { value: "1", label: "Normal" }, { value: "1.15", label: "Fast" }]} />
+      </div>
+      {ttsSupported && voices && voices.length > 0 && (
+        <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+          <div><div>Voice</div><div className="small dim">{cur ? cur.name : ""}</div></div>
+          <div className="row-wrap">
+            {voices.length > 1 && (
+              <select className="input input-sm" style={{ width: "100%", textAlign: "left" }} aria-label="Japanese voice" value={cur?.voiceURI || ""} onChange={(e) => set({ voiceURI: e.target.value })}>
+                {voices.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name}{v.localService ? "" : " (online)"}</option>)}
+              </select>
+            )}
+            <button className="btn btn-soft btn-sm" onClick={() => say({ file: "", text: "こんにちは。日本語を勉強しています。" })}><Icon name="volume" /> Test voice</button>
+          </div>
+        </div>
+      )}
+      <Row title="Pronunciation check" sub={recognitionSupported ? "Uses your browser's speech recognition. It may need an internet connection." : recordingSupported ? "This browser can't recognise speech, so you record yourself and compare by ear." : "Not available in this browser."} />
+      {info.count > 0 ? (
+        <div className="list-item">
+          <div className="grow"><div>Downloaded audio</div><div className="small dim">{info.count.toLocaleString("en-US")} clips · about {mb} MB on this device</div></div>
+          <button className="btn btn-soft btn-sm" onClick={removeAudio}>Remove</button>
+        </div>
+      ) : (
+        <Row title="Native audio" sub="Importing a deck with audio (like Kaishi) in Cards → Import Anki deck adds the original recordings. Already imported? Import the same file again, your progress stays." />
+      )}
+    </Section>
   );
 }
 
@@ -135,6 +189,8 @@ export function Settings() {
         </div>
       </Section>
 
+      <AudioSection s={s} set={set} />
+
       <Section title="Reading and look">
         <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
           <div><div>Furigana</div><div className="small dim">Auto hides readings for kanji you already know</div></div>
@@ -170,12 +226,12 @@ export function Settings() {
       </Section>
 
       <Section title="App">
-        <Row title="Version" sub={`Nihongo Tracker ${APP_VERSION}`} />
+        <Row title="Version" sub={`Kotoba ${APP_VERSION}`} />
         <button className="list-item" onClick={resetCaches}><Icon name="refresh" /><span className="grow"><div>Reload with a fresh copy</div><div className="small dim">Fixes a stuck or outdated app. Your data is kept.</div></span></button>
         <button className="list-item" style={{ color: "var(--rose)" }} onClick={doReset}><Icon name="trash" /><span className="grow">Erase all data on this device</span></button>
       </Section>
 
-      <p className="tiny faint" style={{ padding: "0 8px" }}>Grammar lessons follow the order of <a href={SOURCE.url} target="_blank" rel="noreferrer">{SOURCE.name}</a> by Tae Kim, licensed {SOURCE.license}. Spaced repetition uses the open FSRS algorithm.</p>
+      <p className="tiny faint" style={{ padding: "0 8px" }}>Grammar lessons follow the order of <a href={SOURCE.url} target="_blank" rel="noreferrer">{SOURCE.name}</a> by Tae Kim, licensed {SOURCE.license}. Spaced repetition uses the open FSRS algorithm. Stroke order data is from <a href="https://kanjivg.tagaini.net" target="_blank" rel="noreferrer">KanjiVG</a> (CC BY-SA 3.0).</p>
     </div>
   );
 }

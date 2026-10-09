@@ -1,4 +1,6 @@
-# Nihongo Tracker 4
+# Kotoba (Nihongo Tracker 4)
+
+The app is called **Kotoba** on the home screen (`name`/`short_name` in `public/manifest.webmanifest`, plus `<title>` and `apple-mobile-web-app-title` in `index.html`). The icon is a brush-stroke 言 drawn from KanjiVG stroke data: `node scripts/make-icons.mjs`.
 
 A homescreen web app (PWA) for learning Japanese: spaced repetition (FSRS) for kana, kanji and vocabulary, interactive grammar lessons that adapt to the words you know, stats, and sync between devices.
 
@@ -31,6 +33,7 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 * If you export from Anki with **"Include scheduling information"** ticked, your progress is kept (FSRS stability and difficulty are read when present).
 * Your current export has no scheduling. For each deck enter how many cards you already know, in order (e.g. RRTK 315, Kaishi 41). They come back for a quick check spread over 10 days.
 * An imported Hiragana/Katakana deck pauses the built-in one so you don't study both.
+* **Audio:** if the deck has recordings (Kaishi has word and sentence audio), the wizard offers "Include audio". The clips are unpacked into the browser's own storage (about 2,900 clips for Kaishi, a minute at most) and play instead of the built-in voice. Importing the same file again later adds audio to a deck you already imported without touching your progress. Audio stays on that device and is not synced; Settings → Listening and speaking shows the size and can remove it.
 
 ## How it works
 
@@ -41,6 +44,9 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 * **Sync:** offline-first. Each part of your data (settings, decks, progress per deck, review log per month) is merged by timestamp, so two devices never overwrite each other's reviews. Signing in on a device that already has data asks whether to combine or replace.
 * **Motion:** follows Material 3 Expressive. Movement of things (cards, sheets, the nav pill, bars) uses springs that overshoot slightly; fades and colour use springs that settle without bounce. The spring curves are generated as CSS `linear()` easings (`npm run springs` regenerates `src/springs.css`). Sheets can be dragged down and settle with the speed of your finger. Settings → Animations → Reduced (or your device's reduce-motion setting) turns it down.
 * **Haptics:** a light tick on every control, patterns for Again / Hard / Good / Easy, right and wrong answers, and finishing. Android (Chrome) uses the Vibration API. iPhone Safari 17.4 and newer has no vibration API, so a hidden switch control is toggled to get the system tick. Desktop browsers don't vibrate. Settings → Haptic feedback has a test row.
+* **Listening:** cards read the word when they appear and the example sentence when you reveal the answer (switch off in Settings). Without recordings the phone's Japanese voice is used. If the device has no Japanese voice the app stays silent instead of reading Japanese with the wrong voice; Settings explains how to install one.
+* **Pronunciation check:** the microphone button on a card listens through the browser's speech recognition (ja-JP) and compares what it heard with the word or sentence, character by character, with a score. Kanji written in kana by the recogniser still count when the reading is known. Limits: Chrome/Android sends the audio to Google's recogniser, so it needs a connection; Safari and installed iPhone apps may not allow recognition at all, in which case the sheet falls back to recording you so you can compare by ear.
+* **Writing practice:** "Write N characters" on Today, plus a pen button on kana and kanji cards. Trace with a stroke-by-stroke guide, or write from memory; strokes must be drawn in the right order and direction (the app says which stroke was expected), with hints and an animated demo. Stroke data is KanjiVG (© Ulrich Apel, CC BY-SA 3.0), built into `public/strokes/` by `node scripts/build-strokes.mjs`, fetched per character when first needed and cached for offline use.
 * **Backups:** Settings → Export backup (JSON). Restore merges.
 
 ## Development
@@ -48,11 +54,12 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 ```
 npm install
 npm run dev        # local
-npm test           # unit tests (378)
+npm test           # unit tests (414)
 npm run build
 node scripts/make-icons.mjs   # regenerate icons
+node scripts/build-strokes.mjs # regenerate public/strokes from KanjiVG
 # browser tests (need Chromium; start `npx vite preview --port 4173` first)
-node tests/e2e/flow.mjs
+node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud
 ```
 
 Keyboard in a study session: Space = show answer / Good, 1–4 = grade, Z = undo.

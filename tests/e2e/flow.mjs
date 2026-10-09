@@ -29,7 +29,7 @@ for (let i = 0; i < 60; i++) {
 log("graded:", n);
 await page.waitForSelector("text=Session complete", { timeout: 5000 });
 await shot(page, "13-study-done");
-await page.click("text=Done");
+await page.click(".overlay-wrap >> text=Done");
 await page.waitForSelector(".plan-hero");
 
 // ---- lesson
@@ -84,7 +84,7 @@ for (let i = 0; i < 80; i++) {
 log("exercise steps:", steps);
 await shot(page, "17-lesson-result");
 log("result:", (await page.innerText("h1")));
-await page.click("text=Done");
+await page.click(".overlay-wrap >> text=Done");
 
 // ---- other tabs
 for (const [name, file] of [["Cards", "18-cards"], ["Stats", "19-stats"], ["Settings", "20-settings"]]) {

@@ -4,11 +4,18 @@ import { springAnimate } from "../lib/motion.js";
 import * as hap from "../lib/haptics.js";
 
 export const AppCtx = createContext(null);
+/** True while a full-screen view covers the tabs: they stay mounted underneath (so closing is instant and
+ *  keeps the scroll position) but stop reacting to the store until you come back. */
+export const PauseCtx = createContext(false);
 export const useApp = () => {
   const ctx = useContext(AppCtx);
+  const paused = useContext(PauseCtx);
+  const frozen = useRef(null);
+  if (paused) { if (!frozen.current) frozen.current = { store: ctx.store.getVersion(), sync: ctx.sync.getVer() }; } else frozen.current = null;
+  const f = frozen.current;
   // re-render on every store change
-  useSyncExternalStore(ctx.store.subscribe, ctx.store.getVersion);
-  useSyncExternalStore(ctx.sync.subscribe, ctx.sync.getVer);
+  useSyncExternalStore(ctx.store.subscribe, f ? () => f.store : ctx.store.getVersion);
+  useSyncExternalStore(ctx.sync.subscribe, f ? () => f.sync : ctx.sync.getVer);
   return ctx;
 };
 
@@ -129,7 +136,7 @@ function useSheetDrag(onClose) {
 /** Bottom sheet. Closes on scrim tap, Escape and drag-down. */
 export function Sheet({ title, onClose, children, actions }) {
   useEffect(() => {
-    const k = (e) => { if (e.key === "Escape") onClose(); };
+    const k = (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } }; // the view underneath must not also react
     document.addEventListener("keydown", k);
     return () => document.removeEventListener("keydown", k);
   }, [onClose]);

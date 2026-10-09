@@ -6,6 +6,7 @@ import { computeStats } from "../lib/stats.js";
 import { sentencePool } from "../lib/personal.js";
 import { LESSONS } from "../content/lessons.js";
 import { dayKey } from "../lib/time.js";
+import { pickWritingSet, wroteToday } from "../lib/writing.js";
 
 function greeting(now) {
   const h = new Date(now).getHours();
@@ -34,6 +35,8 @@ export function Home() {
   const pool = useMemo(() => sentencePool(store, now), [v, day]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const s = store.settings;
+  const writeSet = useMemo(() => (s.tracks?.kanji !== false || s.tracks?.kana !== false ? pickWritingSet(store, 5) : []), [v, day]); // eslint-disable-line react-hooks/exhaustive-deps
+  const wrote = wroteToday(store, now);
   const grammarOn = s.tracks?.grammar !== false && s.focus !== "maintain";
   const nextLesson = grammarOn ? LESSONS.find((l) => !store.lessons[l.id]?.done) : null;
   const doneToday = counts.today.total;
@@ -77,6 +80,9 @@ export function Home() {
           title={remaining === 0 ? "Reviews and new cards" : `Study ${plural(remaining, "card")}`}
           sub={remaining === 0 ? (counts.newAvailable ? "All caught up for today" : "Nothing due") : `${counts.review} reviews · ${counts.new} new${counts.learn ? ` · ${counts.learn} learning` : ""}`}
           onClick={() => open({ type: "study" })} disabled={remaining === 0} />
+        {writeSet.length >= 1 && (
+          <Step icon="pen" done={wrote} title={`Write ${plural(writeSet.length, "character")}`} sub={`Stroke order practice: ${writeSet.slice(0, 4).map((x) => x.ch).join(" ")}${writeSet.length > 4 ? " …" : ""}`} onClick={() => open({ type: "write", items: writeSet })} />
+        )}
         {nextLesson && (
           <Step icon="learn" done={lessonDoneToday} title={`Lesson: ${nextLesson.title}`} sub={`${nextLesson.jp} · ${nextLesson.blurb}`} onClick={() => open({ type: "lesson", id: nextLesson.id })} />
         )}

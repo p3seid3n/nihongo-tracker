@@ -2,6 +2,7 @@
 const VERSION = "__VERSION__";
 const CACHE = "nt4-" + VERSION;
 const PRECACHE = __PRECACHE__;
+const STROKES = "nt-strokes-v1"; // kanji stroke data: cached when first used, kept across app versions
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -25,7 +26,7 @@ self.addEventListener("activate", (event) => {
     (async () => {
       // remove every older cache, including the ones from previous app versions (nihongo-v3 etc.)
       const names = await caches.keys();
-      await Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n)));
+      await Promise.all(names.filter((n) => n !== CACHE && n !== STROKES).map((n) => caches.delete(n)));
       await self.clients.claim();
     })()
   );
@@ -36,6 +37,22 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // API calls (Supabase) go straight to the network
+
+  if (url.pathname.startsWith("/strokes/")) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(STROKES);
+        const hit = await cache.match(req, { ignoreSearch: true });
+        if (hit) return hit;
+        try {
+          const res = await fetch(req);
+          if (res.ok) cache.put(req, res.clone());
+          return res;
+        } catch { return new Response("", { status: 504 }); }
+      })()
+    );
+    return;
+  }
 
   event.respondWith(
     (async () => {

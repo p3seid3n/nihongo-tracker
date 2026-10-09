@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Store, idbBackend } from "./lib/store.js";
 import { SyncController } from "./lib/syncController.js";
 import { supabase, cloudConfigured } from "./lib/supabase.js";
@@ -6,7 +6,8 @@ import { supabaseRemote } from "./lib/sync.js";
 import { getSession, onAuthChange, signOut } from "./lib/auth.js";
 import { knownKanjiSet } from "./lib/personal.js";
 import { setHaptics, tick, onIOS, canHaptic } from "./lib/haptics.js";
-import { AppCtx, ConfirmSheet, Toasts, useToasts, Banner } from "./ui/common.jsx";
+import { setAudioPrefs, unlockAudio } from "./lib/audio.js";
+import { AppCtx, PauseCtx, ConfirmSheet, Toasts, useToasts, Banner } from "./ui/common.jsx";
 import { Icon } from "./ui/icons.jsx";
 import { Auth } from "./ui/Auth.jsx";
 import { Onboarding } from "./ui/Onboarding.jsx";
@@ -15,6 +16,7 @@ import { Study } from "./ui/Study.jsx";
 import { Learn, LessonPlayer, PracticePlayer } from "./ui/Learn.jsx";
 import { Library } from "./ui/Library.jsx";
 import { ImportWizard } from "./ui/ImportWizard.jsx";
+import { WritingPlayer } from "./ui/Writing.jsx";
 import { Stats } from "./ui/Stats.jsx";
 import { Settings } from "./ui/Settings.jsx";
 
@@ -26,6 +28,19 @@ const TABS = [
   { id: "settings", label: "Settings", icon: "settings" },
 ];
 
+// The tab content stays mounted while a full-screen view is open (see PauseCtx).
+const Tabs = memo(function Tabs({ tab }) {
+  return (
+    <>
+      {tab === "home" && <Home />}
+      {tab === "learn" && <Learn />}
+      {tab === "cards" && <Library />}
+      {tab === "stats" && <Stats />}
+      {tab === "settings" && <Settings />}
+    </>
+  );
+});
+
 function createRuntime() {
   const store = new Store(idbBackend());
   const sessionRef = { current: null };
@@ -36,7 +51,7 @@ function createRuntime() {
 function Splash({ text }) {
   return (
     <div className="welcome" style={{ alignItems: "center", textAlign: "center" }}>
-      <div className="brand-kanji" lang="ja">学</div>
+      <div className="brand-kanji" lang="ja">言</div>
       {text && <p className="dim">{text}</p>}
     </div>
   );
@@ -212,6 +227,14 @@ export default function App() {
     return () => mq.removeEventListener?.("change", apply);
   }, [themeSetting]);
   useEffect(() => { setHaptics(store.settings.haptics); }, [store.settings.haptics, store]);
+  useEffect(() => { setAudioPrefs({ autoplay: store.settings.autoplay, rate: store.settings.speechRate, voiceURI: store.settings.voiceURI }); }, [store.settings.autoplay, store.settings.speechRate, store.settings.voiceURI, store]);
+  useEffect(() => {
+    // the first tap unlocks audio and speech on iPhone so auto-play can work later
+    const once = () => { unlockAudio(); document.removeEventListener("pointerdown", once, true); document.removeEventListener("click", once, true); };
+    document.addEventListener("pointerdown", once, true);
+    document.addEventListener("click", once, true);
+    return () => { document.removeEventListener("pointerdown", once, true); document.removeEventListener("click", once, true); };
+  }, []);
   const motionSetting = store.settings.motion;
   useEffect(() => { document.documentElement.dataset.motion = motionSetting === "reduced" ? "reduced" : "full"; }, [motionSetting]);
 
@@ -266,19 +289,10 @@ export default function App() {
     body = <Onboarding store={store} onFinish={() => { setTab("home"); window.scrollTo(0, 0); }} onSignIn={() => open({ type: "auth" })} />;
   } else {
     body = (
-      <div className="app">
+      <div className="app" inert={overlay ? "" : undefined} aria-hidden={overlay ? "true" : undefined}>
         {store.saveError && <div style={{ position: "sticky", top: 0, zIndex: 40, padding: 8 }}><Banner kind="err" icon="warn">Can't save to this device (storage full or blocked). Export a backup from Settings.</Banner></div>}
-        {!overlay && (
-          <>
-            {tab === "home" && <Home />}
-            {tab === "learn" && <Learn />}
-            {tab === "cards" && <Library />}
-            {tab === "stats" && <Stats />}
-            {tab === "settings" && <Settings />}
-          </>
-        )}
-        {!overlay && (
-          <nav className="nav" aria-label="Main">
+        <PauseCtx.Provider value={!!overlay}><Tabs tab={tab} /></PauseCtx.Provider>
+        <nav className="nav" aria-label="Main">
             <div className="nav-inner" style={{ "--i": Math.max(0, TABS.findIndex((t) => t.id === tab)) }}>
               <span className="nav-pill" aria-hidden="true" />
               {TABS.map((t) => (
@@ -289,7 +303,6 @@ export default function App() {
               ))}
             </div>
           </nav>
-        )}
       </div>
     );
   }
@@ -316,6 +329,7 @@ function OverlayView({ o, close, open }) {
     case "review": return <PracticePlayer key={o.key} mode="review" onClose={close} />;
     case "sentences": return <PracticePlayer key={o.key} mode="sentences" onClose={close} />;
     case "testout": return <PracticePlayer key={o.key} mode="testout" unitId={o.unit} onClose={close} />;
+    case "write": return <WritingPlayer key={o.key} items={o.items || []} onClose={close} />;
     case "import": return <ImportWizard key={o.key} onClose={close} onOpen={(n) => open(n)} />;
     case "auth": return <div className="fullscreen" key={o.key}><Auth onDone={close} onSkip={close} skipLabel="Not now" /></div>;
     default: return null;

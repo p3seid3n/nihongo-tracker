@@ -78,7 +78,7 @@ export function Onboarding({ store, onFinish, onSignIn }) {
 
       {step === 0 && (
         <>
-          <div className="brand-kanji" lang="ja">学</div>
+          <div className="brand-kanji" lang="ja">言</div>
           <div className="stack">
             <h1>Let's build your Japanese.</h1>
             <p className="dim">Spaced repetition for kana, kanji and words, plus short grammar lessons that use the words you actually know. Tell us a bit about you and we'll shape the plan.</p>

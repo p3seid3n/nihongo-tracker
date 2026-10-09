@@ -60,7 +60,7 @@ export function Auth({ onDone, onSkip, recovery = false, skipLabel = "Continue w
 
   return (
     <div className="welcome">
-      <div className="brand-kanji" lang="ja">学</div>
+      <div className="brand-kanji" lang="ja">言</div>
       <div className="stack">
         <h1>{titles[mode]}</h1>
         <p className="dim">{subs[mode]}</p>

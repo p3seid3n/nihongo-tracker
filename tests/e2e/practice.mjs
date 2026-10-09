@@ -50,7 +50,7 @@ await page.click("text=Read sentences");
 await page.waitForSelector(".q-prompt");
 await shot(page, "60-sentences");
 log("sentences finished:", await runExercises(), (await page.innerText("h1")));
-await page.click("text=Done");
+await page.click(".overlay-wrap >> text=Done");
 
 // test out of unit 1 (bot guesses => probably fails; just must not crash)
 await page.click("nav >> text=Grammar");
@@ -60,7 +60,7 @@ await page.click("text=Test out of this unit");
 await page.waitForSelector(".q-instr, .match");
 log("testout finished:", await runExercises(), (await page.innerText("h1")));
 await shot(page, "62-testout-result");
-await page.click("text=Done");
+await page.click(".overlay-wrap >> text=Done");
 
 // mark unit known, then grammar review
 await page.click("button[aria-label='Options for Everyday Japanese']");
@@ -71,7 +71,7 @@ await page.click("nav >> text=Grammar");
 await page.click("button:has-text('Review')");
 await page.waitForSelector(".q-instr, .match");
 log("review finished:", await runExercises(), (await page.innerText("h1")));
-await page.click("text=Done");
+await page.click(".overlay-wrap >> text=Done");
 await shot(page, "63-learn-after");
 log("lessons done:", await page.evaluate(() => Object.values(window.__ntStore.lessons).filter((l) => l.done).length));
 log("errors:", errors);

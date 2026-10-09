@@ -8,7 +8,9 @@ import { Unzip, UnzipInflate, UnzipPassThrough, unzipSync } from "fflate";
 import { decompress as zstdDecompress } from "fzstd";
 import { DAY, monthKey } from "../time.js";
 
-const WANTED = ["collection.anki21b", "collection.anki21", "collection.anki2"];
+import { parseMediaList, soundOf } from "./media.js";
+
+const WANTED = ["collection.anki21b", "collection.anki21", "collection.anki2", "media"];
 
 function concat(chunks) {
   let n = 0;
@@ -58,6 +60,7 @@ export async function extractCollection(file, onProgress = () => {}) {
 }
 
 export function pickDatabase(found) {
+  // (the "media" entry, when present, is the file list used for audio)
   if (found["collection.anki21b"]) {
     try {
       return { bytes: zstdDecompress(found["collection.anki21b"]), name: "collection.anki21b" };
@@ -126,6 +129,8 @@ export function mapNote(modelName, fieldNames, fields, deckName) {
         sentE: cleanText(get("sentence meaning")),
         notes: cleanText(get("notes"), { breaks: true }),
         freq: cleanText(get("frequency")),
+        wa: soundOf(get("word audio", "audio", "vocab audio")),
+        sa: soundOf(get("sentence audio")),
       }),
     };
   }
@@ -321,6 +326,8 @@ export async function parseApkg(file, loadSQL, onProgress = () => {}) {
   }
   onProgress({ phase: "read", value: 0 });
   const result = parseCollection(SQL, bytes);
+  result.mediaList = [];
+  try { result.mediaList = found.media ? parseMediaList(found.media) : []; } catch { /* audio is optional */ }
   onProgress({ phase: "done", value: 1 });
   return result;
 }

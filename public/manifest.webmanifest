@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Nihongo Tracker",
-  "short_name": "Nihongo",
-  "description": "Spaced repetition, grammar lessons and progress for learning Japanese.",
+  "name": "Kotoba",
+  "short_name": "Kotoba",
+  "description": "Learn Japanese: spaced repetition, grammar lessons, listening, speaking and kanji writing.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

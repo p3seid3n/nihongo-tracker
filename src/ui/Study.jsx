@@ -9,6 +9,11 @@ import { deckOf } from "../lib/ids.js";
 import { kanjiOf } from "../lib/jp.js";
 import { computeStats } from "../lib/stats.js";
 import * as hap from "../lib/haptics.js";
+import { say, stop as stopAudio, wordPart, sentencePart } from "../lib/audio.js";
+import { plainOf, readingOf } from "../lib/jp.js";
+import { SpeakBtn, MicBtn } from "./Voice.jsx";
+import { unitsFromMarkup } from "../lib/pronounce.js";
+import { WriteBtn } from "./Writing.jsx";
 
 /** Decide which card comes next. Due learning cards first, then the main list, then waiting learning cards. */
 function pickNext(store, main, learnQ, now = Date.now()) {
@@ -95,6 +100,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
   useEffect(() => {
     const k = (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (document.querySelector(".scrim")) return; // a sheet is open
       if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!shown) reveal(); else grade(3); }
       else if (shown && ["1", "2", "3", "4"].includes(e.key)) grade(Number(e.key));
       else if (e.key === "z" || e.key === "Backspace") undo();
@@ -130,6 +136,22 @@ export function Study({ opts = {}, onClose, onOpen }) {
     return list.filter((w) => w.f !== card.f).slice(0, 4);
   }, [card, deck]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---- listening: read the word when a card appears, the example sentence when it is revealed
+  const autoplay = store.settings.autoplay;
+  const cardKey = cur ? `${cur.id}-${tally[1] + tally[2] + tally[3] + tally[4]}` : "";
+  const wp = useMemo(() => (card ? wordPart(card, deck?.kind) : null), [card, deck]);
+  const sp = useMemo(() => (card && deck?.kind === "vocab" ? sentencePart(card) : null), [card, deck]);
+  useEffect(() => { if (autoplay && wp) say(wp); else stopAudio(); }, [cardKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (autoplay && shown && sp) say(sp); }, [shown]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => stopAudio(), []);
+  const sayItems = useMemo(() => {
+    if (!card) return [];
+    const items = [];
+    if (wp) items.push({ key: "w", label: "Word", text: plainOf(card.f), reading: card.r && /[ぁ-ゟ゠-ヿ]/.test(card.r) && deck?.kind !== "kana" ? card.r : "", part: wp, en: deck?.kind === "kana" ? card.m : card.m });
+    if (sp) items.push({ key: "s", label: "Sentence", text: sp.text, reading: "", alt: card.x?.sentF ? [readingOf(card.x.sentF).replace(/\s+/g, "")] : [], units: unitsFromMarkup(card.x?.sentF || card.x?.sent || ""), part: sp, en: card.x?.sentE || "" });
+    return items;
+  }, [card, deck, wp, sp]);
+
   if (!cur) return <Summary store={store} tally={tally} total={finished} onClose={onClose} onOpen={onOpen} opts={opts} />;
   if (!card) return null;
 
@@ -154,8 +176,13 @@ export function Study({ opts = {}, onClose, onOpen }) {
         </div>
 
         <div className="study-body">
-          <div className="flash card-in" key={`${cur.id}-${tally[1] + tally[2] + tally[3] + tally[4]}`} onClick={!shown ? reveal : undefined}>
+          <div className="flash card-in" key={cardKey} onClick={!shown ? reveal : undefined}>
             <span className="chip tag">{deck?.name || ""}</span>
+            <div className="flash-tools">
+              {wp && <SpeakBtn part={wp} label="Play the word" />}
+              {sayItems.length > 0 && <MicBtn items={sayItems} />}
+              <WriteBtn text={card.f} title={card.m} sub={card.r && kind !== "kana" ? card.r : "Stroke order"} />
+            </div>
             <Front kind={kind} card={card} />
             {shown && <Back kind={kind} card={card} related={related} />}
             {!shown && <span className="reveal-hint">Tap to show the answer</span>}
@@ -194,7 +221,7 @@ function Back({ kind, card, related }) {
         <div className="main">{card.m}</div>
         {(x.sentF || x.sent) && (
           <div className="box">
-            <span className="label">Example</span>
+            <div className="spread"><span className="label">Example</span><SpeakBtn part={sentencePart(card)} label="Play the sentence" className="small-btn" size={20} /></div>
             <div><Sentence jp={x.sentF || x.sent} punct={false} /></div>
             {x.sentE && <div className="dim small" style={{ marginTop: 4 }}>{x.sentE}</div>}
           </div>

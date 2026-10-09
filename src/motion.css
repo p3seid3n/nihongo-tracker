@@ -126,3 +126,37 @@ button.chip[aria-pressed="true"] { transform: scale(1.04); }
 
 .sheet-head h2 { margin: 0 0 8px; }
 .list-item > svg { flex: none; }
+
+/* ---------- listening and speaking ---------- */
+@keyframes speak-wave { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes mic-ring { from { transform: scale(1); opacity: 0.5; } to { transform: scale(1.9); opacity: 0; } }
+.mic-btn { transition: transform var(--sp-fast-spatial-d) var(--sp-fast-spatial), background-color var(--sp-effects-d) var(--sp-effects), border-radius var(--sp-fast-spatial-d) var(--sp-fast-spatial); }
+.mic-btn:active { transform: scale(0.92); border-radius: 26px; }
+.mic-btn.on { border-radius: 24px; }
+.mic-btn.on::before, .mic-btn.on::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: 2px solid var(--rose); animation: mic-ring 1.5s ease-out infinite; }
+.mic-btn.on::after { animation-delay: 0.7s; }
+.say-btn { transition: transform var(--sp-fast-spatial-d) var(--sp-fast-spatial), background-color var(--sp-effects-d) var(--sp-effects); }
+.say-btn:active { transform: scale(0.86); }
+.say-text span { transition: color var(--sp-effects-d) var(--sp-effects); }
+.say-text .hit { animation: pop-in var(--sp-fast-spatial-d) var(--sp-fast-spatial) backwards; animation-delay: calc(var(--n, 0) * 18ms); }
+.say-result { animation: rise-in var(--sp-spatial-d) var(--sp-spatial) backwards, enter-o var(--sp-effects-d) var(--sp-effects) backwards; }
+.say-target { transition: background-color var(--sp-effects-d) var(--sp-effects); }
+
+/* ---------- writing pad ---------- */
+@keyframes pad-draw { from { stroke-dashoffset: 1; } }
+@keyframes pad-hint { 0% { stroke-dashoffset: 1; opacity: 1; } 55% { stroke-dashoffset: 0; opacity: 1; } 90%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes pad-settle { from { stroke-width: 7.4; } }
+@keyframes pad-bad { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes pad-pop { 40% { transform: scale(1.045); } }
+.pad-stroke.demo { stroke-dasharray: 1; animation: pad-draw 0.42s cubic-bezier(0.3, 0, 0.2, 1) backwards; }
+.pad-stroke.hint { animation: pad-hint 1.7s ease-in-out infinite; }
+.pad-stroke.ok { animation: pad-settle var(--sp-fast-spatial-d) var(--sp-fast-spatial) backwards; transition: stroke var(--sp-effects-d) var(--sp-effects); }
+.pad-ink.bad { animation: pad-bad 0.5s ease-out forwards; }
+.pad-start { animation: pop-in var(--sp-fast-spatial-d) var(--sp-fast-spatial) backwards; transform-box: fill-box; transform-origin: center; }
+.pad-wrap.finished { animation: pad-pop var(--sp-spatial-d) var(--sp-spatial); }
+.pad-status { transition: color var(--sp-effects-d) var(--sp-effects); }
+
+/* ---------- onboarding and sign-in steps ---------- */
+.welcome > :not(.steps-dots):not(.onb-nav) { animation: rise-in var(--sp-slow-spatial-d) var(--sp-slow-spatial) backwards, enter-o var(--sp-slow-effects-d) var(--sp-slow-effects) backwards; animation-delay: calc(var(--n, 0) * 45ms); }
+.welcome > :nth-child(3) { --n: 1; } .welcome > :nth-child(4) { --n: 2; } .welcome > :nth-child(5) { --n: 3; } .welcome > :nth-child(n+6) { --n: 4; }
+.node.available .node-dot { animation: pop-in var(--sp-spatial-d) var(--sp-spatial) 120ms backwards; }
