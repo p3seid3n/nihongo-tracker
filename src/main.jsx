@@ -1,13 +1,15 @@
 import React from "react";
-import ReactDOM from "react-dom/client";
+import { createRoot } from "react-dom/client";
+import "@fontsource-variable/bricolage-grotesque/wght.css";
+import "./styles.css";
 import App from "./App.jsx";
+import { ErrorBoundary } from "./ui/ErrorBoundary.jsx";
+import { registerServiceWorker } from "./registerSW.js";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode><App /></React.StrictMode>
+createRoot(document.getElementById("root")).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
 );
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
-  });
-}
+registerServiceWorker();

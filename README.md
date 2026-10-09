@@ -1,71 +1,56 @@
-# 日本語 Tracker — Deploy Guide
+# Nihongo Tracker 4
 
-This is your Japanese study tracker as a real, standalone web app —
-no Claude branding, true fullscreen when installed to a homescreen.
+A homescreen web app (PWA) for learning Japanese: spaced repetition (FSRS) for kana, kanji and vocabulary, interactive grammar lessons that adapt to the words you know, stats, and sync between devices.
 
-## Option A — Vercel (recommended, easiest)
+## Put it online (GitHub → Vercel, as before)
 
-1. Create a free account at https://vercel.com (can sign in with GitHub).
-2. Install the Vercel CLI: `npm install -g vercel`
-3. From inside this folder, run:
-   ```
-   vercel
-   ```
-4. Answer the prompts (defaults are fine — just hit enter through them).
-5. Vercel gives you a live URL like `nihongo-tracker.vercel.app`. Done.
+1. Open your GitHub repo `p3seid3n/nihongo-tracker` in the browser. Delete the old files (or just upload over them), then drag **the contents of this folder** (not the folder itself, and without `node_modules` / `dist`) into the repo and commit. The build step removes leftovers of the old version by itself.
+2. Vercel redeploys automatically. Settings stay the same (Framework: Vite, build `npm run build`, output `dist`).
+3. On your phone: if the old app still shows, close it fully and reopen. If it is stuck, remove it from the home screen and add it again (Safari → Share → Add to Home Screen), or clear the site data for the domain once.
 
-No GitHub needed for this option — the CLI uploads the folder directly.
+The app works fully without step "Cloud sync" below. Everything is stored on the device.
 
-## Option B — Netlify (also easy, drag-and-drop)
+## Cloud sync and login (about 10 minutes, free)
 
-1. Run `npm install` then `npm run build` inside this folder.
-2. Go to https://app.netlify.com/drop
-3. Drag the generated `dist` folder onto the page.
-4. Netlify gives you a live URL instantly.
+1. Create a project at supabase.com (free plan is enough).
+2. Dashboard → SQL Editor → New query → paste the contents of `supabase.sql` → Run.
+3. Dashboard → Project Settings → API: copy the **Project URL** and the **anon public key**.
+4. Vercel → your project → Settings → Environment Variables. Add
+   `VITE_SUPABASE_URL` = the Project URL
+   `VITE_SUPABASE_ANON_KEY` = the anon key
+   then Deployments → Redeploy.
+5. Supabase → Authentication → URL Configuration: set **Site URL** to your Vercel address (`https://nihongo-tracker-kappa.vercel.app`). Needed for the confirmation and password-reset emails.
+6. In the app: Settings → Sign in or create account. Use the same account on every device.
 
-## Option C — GitHub Pages (free, a bit more setup)
+The anon key is meant to be public. Your data is protected by row-level security from `supabase.sql`: each account can only see its own rows.
 
-1. Push this folder to a new GitHub repo.
-2. In the repo settings, enable GitHub Pages, or use the
-   `gh-pages` npm package to publish the `dist` folder automatically.
-3. Your app will be live at `yourusername.github.io/repo-name`.
+## Importing your Anki decks
 
-## After it's deployed (any option)
+Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens on the device; a 146 MB export took about one second in testing.
 
-1. Open the live URL on your phone in **Chrome**.
-2. Tap the **⋮** menu → **Install and create shortcut** (or "Add to Home screen").
-3. Confirm. The icon now lives on your homescreen.
-4. Open it from that icon — it launches fullscreen, no browser bar,
-   no Claude branding, nothing but your app.
+* If you export from Anki with **"Include scheduling information"** ticked, your progress is kept (FSRS stability and difficulty are read when present).
+* Your current export has no scheduling. For each deck enter how many cards you already know, in order (e.g. RRTK 315, Kaishi 41). They come back for a quick check spread over 10 days.
+* An imported Hiragana/Katakana deck pauses the built-in one so you don't study both.
 
-## Important: your data
+## How it works
 
-Progress is stored in the browser's `localStorage`, tied to the exact
-domain you deploy to. That means:
+* **Scheduler:** FSRS-6 with the default weights, learning steps 1 m / 10 m, relearning 10 m, day starts at 4 am, deterministic fuzz, target retention 85/90/95 % (Settings).
+* **Today:** reviews first, new cards woven in, then the next grammar lesson, a grammar refresher, and sentence reading from your own vocabulary cards.
+* **Lessons:** 45 lessons in the order of Tae Kim's Guide (CC BY-NC-SA 3.0, personal non-commercial use with attribution). Explanations and example sentences are written for this app. Practice sentences are generated from a word bank and weighted towards words you are shaky on. Lessons are scheduled with FSRS too, so grammar comes back for review. Units can be tested out of.
+* **Furigana:** shown only for kanji you have not learned yet (kanji cards you graduated, plus kanji in well-known words). Change in Settings.
+* **Sync:** offline-first. Each part of your data (settings, decks, progress per deck, review log per month) is merged by timestamp, so two devices never overwrite each other's reviews. Signing in on a device that already has data asks whether to combine or replace.
+* **Backups:** Settings → Export backup (JSON). Restore merges.
 
-- Always open the app from the same installed icon / same URL.
-- If you redeploy to a **different** URL later, old data won't carry
-  over automatically (localStorage doesn't transfer across domains).
-- There's no account system and no server — your data lives only on
-  this one phone, in this one browser profile. Consider that a
-  single point of failure: don't clear Chrome's site data for this
-  app unless you mean to.
-
-## Project structure
+## Development
 
 ```
-nihongo-tracker/
-├── index.html          — entry HTML, PWA meta tags
-├── package.json         — dependencies (react, recharts, vite)
-├── vite.config.js
-├── public/
-│   ├── manifest.json    — PWA name/icon/colors
-│   ├── sw.js            — minimal service worker (enables install prompt)
-│   └── icon-*.png       — app icons
-└── src/
-    ├── main.jsx         — React entry point
-    └── App.jsx          — the whole app (your tracker)
+npm install
+npm run dev        # local
+npm test           # unit tests (378)
+npm run build
+node scripts/make-icons.mjs   # regenerate icons
+# browser tests (need Chromium; start `npx vite preview --port 4173` first)
+node tests/e2e/flow.mjs
 ```
 
-To make changes yourself later: edit `src/App.jsx`, run `npm run dev`
-to preview locally, then redeploy with the same command you used above.
+Keyboard in a study session: Space = show answer / Good, 1–4 = grade, Z = undo.
