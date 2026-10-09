@@ -35,7 +35,7 @@ function Footer({ canCheck, onCheck, verdict, onContinue, checkLabel = "Check" }
   }
   return (
     <div className="sticky-actions">
-      <button className="btn btn-primary btn-lg btn-block" disabled={!canCheck} onClick={onCheck}>{checkLabel}</button>
+      <button className="btn btn-primary btn-lg btn-block" data-haptic="none" disabled={!canCheck} onClick={onCheck}>{checkLabel}</button>
     </div>
   );
 }

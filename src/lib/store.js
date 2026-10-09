@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS = {
   furigana: "auto", // auto | always | never
   theme: "dark", // dark | light | system
   haptics: true,
+  motion: "full",
   u: 0,
 };
 

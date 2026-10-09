@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
 import { Rich, ExerciseRunner } from "./Exercises.jsx";
-import { useApp, useNow, PageHead, plural, Sheet } from "./common.jsx";
+import { useApp, useNow, PageHead, plural, Sheet, Burst } from "./common.jsx";
 import { UNITS, LESSONS, LESSON_BY_ID, SOURCE } from "../content/lessons.js";
 import { buildLessonExercises, buildReviewExercises, sentenceExercises, lessonExamples } from "../lib/exercises.js";
 import { mulberry32, shuffle } from "../content/generators.js";
@@ -151,6 +151,7 @@ export function LessonPlayer({ id, onClose, onOpen }) {
     return (
       <Shell onClose={onClose}>
         <div className="lesson-body" style={{ alignItems: "center", textAlign: "center", paddingTop: 40 }}>
+          {result.passed && <Burst />}
           <div className="big jp" lang="ja" style={{ fontSize: "4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}>{result.acc >= 1 ? "完璧" : result.passed ? "合格" : "もう一度"}</div>
           <h1>{result.passed ? "Lesson complete" : "Almost there"}</h1>
           <div className="stat-row">
@@ -269,6 +270,7 @@ export function PracticePlayer({ mode, unitId, onClose }) {
     return (
       <Shell>
         <div className="lesson-body" style={{ alignItems: "center", textAlign: "center", paddingTop: 40 }}>
+          {result.passed && <Burst />}
           <div className="big jp" lang="ja" style={{ fontSize: "4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}>{result.passed ? "完了" : "残念"}</div>
           <h1>{mode === "testout" ? (result.passed ? "Unit skipped" : "Not this time") : "Practice complete"}</h1>
           <div className="stat-row">

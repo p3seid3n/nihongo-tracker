@@ -42,7 +42,7 @@ const P = {
   offline: "M3 3l18 18M8.5 8.5A8 8 0 0 0 5 12M2 9a14 14 0 0 1 5-3M12 20h.01M9 16.5a4.5 4.5 0 0 1 3-1M16.5 12.5A8 8 0 0 0 14 11",
 };
 
-export function Icon({ name, size, className, style }) {
+export function Icon({ name, size = 24, className, style }) {
   const d = P[name];
   if (!d) return null;
   return (

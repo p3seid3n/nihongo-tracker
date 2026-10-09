@@ -5,7 +5,7 @@ import { supabase, cloudConfigured } from "./lib/supabase.js";
 import { supabaseRemote } from "./lib/sync.js";
 import { getSession, onAuthChange, signOut } from "./lib/auth.js";
 import { knownKanjiSet } from "./lib/personal.js";
-import { setHaptics } from "./lib/haptics.js";
+import { setHaptics, tick, onIOS, canHaptic } from "./lib/haptics.js";
 import { AppCtx, ConfirmSheet, Toasts, useToasts, Banner } from "./ui/common.jsx";
 import { Icon } from "./ui/icons.jsx";
 import { Auth } from "./ui/Auth.jsx";
@@ -68,7 +68,9 @@ export default function App() {
   const [pulling, setPulling] = useState(false);
   const [confirmState, setConfirmState] = useState(null);
   const [known, setKnown] = useState(() => new Set());
+  const [ghost, setGhost] = useState(null); // overlay that is animating out
   const overlayRef = useRef(null);
+  const prevOverlay = useRef(null);
   const keyRef = useRef(0);
   const { items: toastItems, toast, dismiss } = useToasts();
 
@@ -117,6 +119,15 @@ export default function App() {
   const go = useCallback((t) => { setTab(t); window.scrollTo(0, 0); }, []);
   useEffect(() => {
     document.body.style.overflow = overlay ? "hidden" : "";
+  }, [overlay]);
+  // keep the closed overlay on screen for its exit animation
+  useEffect(() => {
+    const prev = prevOverlay.current;
+    prevOverlay.current = overlay;
+    if (overlay || !prev) { setGhost(null); return undefined; }
+    setGhost(prev);
+    const t = setTimeout(() => setGhost(null), 180);
+    return () => clearTimeout(t);
   }, [overlay]);
 
   // ---- auth
@@ -201,6 +212,23 @@ export default function App() {
     return () => mq.removeEventListener?.("change", apply);
   }, [themeSetting]);
   useEffect(() => { setHaptics(store.settings.haptics); }, [store.settings.haptics, store]);
+  const motionSetting = store.settings.motion;
+  useEffect(() => { document.documentElement.dataset.motion = motionSetting === "reduced" ? "reduced" : "full"; }, [motionSetting]);
+
+  // a light tick under the finger for any control (anything with its own haptic opts out via data-haptic="none")
+  useEffect(() => {
+    if (!canHaptic) return undefined;
+    const sel = 'button, [role="switch"], [role="tab"], a[href], summary, label.pick, .tilebtn';
+    const h = (e) => {
+      const el = e.target instanceof Element ? e.target.closest(sel) : null;
+      if (!el || el.disabled || el.getAttribute("aria-disabled") === "true" || el.closest('[data-haptic="none"]')) return;
+      tick();
+    };
+    // iPhone only plays the system tick from a completed tap; Android is quicker on press.
+    const type = onIOS ? "click" : "pointerdown";
+    document.addEventListener(type, h, true);
+    return () => document.removeEventListener(type, h, true);
+  }, []);
 
   // ---- update notice
   useEffect(() => {
@@ -251,7 +279,8 @@ export default function App() {
         )}
         {!overlay && (
           <nav className="nav" aria-label="Main">
-            <div className="nav-inner">
+            <div className="nav-inner" style={{ "--i": Math.max(0, TABS.findIndex((t) => t.id === tab)) }}>
+              <span className="nav-pill" aria-hidden="true" />
               {TABS.map((t) => (
                 <button key={t.id} className="nav-item" aria-current={tab === t.id ? "page" : undefined} onClick={() => go(t.id)}>
                   <Icon name={t.icon} />
@@ -268,7 +297,11 @@ export default function App() {
   return (
     <AppCtx.Provider value={ctx}>
       {body}
-      {overlay && !recovery && <OverlayView o={overlay} close={close} open={open} />}
+      {(overlay || ghost) && !recovery && (
+        <div className={`overlay-wrap ${overlay ? "" : "out"}`} key={(overlay || ghost).key}>
+          <OverlayView o={overlay || ghost} close={close} open={open} />
+        </div>
+      )}
       {ownerPrompt && <OwnerSheet prompt={ownerPrompt} onChoose={resolveOwner} email={session?.user?.email} />}
       {confirmState && <ConfirmSheet options={confirmState.options} onResolve={(v) => { confirmState.resolve(v); setConfirmState(null); }} />}
       <Toasts items={toastItems} dismiss={dismiss} />

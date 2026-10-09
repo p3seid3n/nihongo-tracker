@@ -13,7 +13,7 @@ function Bars({ data, label, stack }) {
     <div>
       <div className="bars" role="img" aria-label={label}>
         {data.map((d, i) => (
-          <div className="col" key={i} title={d.title}>
+          <div className="col" key={i} title={d.title} style={{ "--k": i }}>
             {stack && d.b > 0 && <i className="alt" style={{ height: `${(d.b / max) * 100}%` }} />}
             <i style={{ height: `${(d.a / max) * 100}%`, opacity: d.a ? 1 : 0.15, minHeight: d.a ? 2 : 2 }} />
           </div>

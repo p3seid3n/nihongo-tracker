@@ -39,6 +39,8 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 * **Lessons:** 45 lessons in the order of Tae Kim's Guide (CC BY-NC-SA 3.0, personal non-commercial use with attribution). Explanations and example sentences are written for this app. Practice sentences are generated from a word bank and weighted towards words you are shaky on. Lessons are scheduled with FSRS too, so grammar comes back for review. Units can be tested out of.
 * **Furigana:** shown only for kanji you have not learned yet (kanji cards you graduated, plus kanji in well-known words). Change in Settings.
 * **Sync:** offline-first. Each part of your data (settings, decks, progress per deck, review log per month) is merged by timestamp, so two devices never overwrite each other's reviews. Signing in on a device that already has data asks whether to combine or replace.
+* **Motion:** follows Material 3 Expressive. Movement of things (cards, sheets, the nav pill, bars) uses springs that overshoot slightly; fades and colour use springs that settle without bounce. The spring curves are generated as CSS `linear()` easings (`npm run springs` regenerates `src/springs.css`). Sheets can be dragged down and settle with the speed of your finger. Settings → Animations → Reduced (or your device's reduce-motion setting) turns it down.
+* **Haptics:** a light tick on every control, patterns for Again / Hard / Good / Easy, right and wrong answers, and finishing. Android (Chrome) uses the Vibration API. iPhone Safari 17.4 and newer has no vibration API, so a hidden switch control is toggled to get the system tick. Desktop browsers don't vibrate. Settings → Haptic feedback has a test row.
 * **Backups:** Settings → Export backup (JSON). Restore merges.
 
 ## Development

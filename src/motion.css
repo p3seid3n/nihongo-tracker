@@ -1,0 +1,128 @@
+/* Motion: Material 3 Expressive style. Springs overshoot for movement of things (spatial) and
+   settle without bounce for fades and colour (effects). Tokens come from springs.css. */
+@supports not (transition-timing-function: linear(0, 1)) {
+  :root {
+    --sp-fast-spatial: cubic-bezier(0.34, 1.45, 0.64, 1); --sp-spatial: cubic-bezier(0.34, 1.3, 0.64, 1); --sp-slow-spatial: cubic-bezier(0.3, 1.15, 0.5, 1);
+    --sp-fast-effects: ease-out; --sp-effects: ease-out; --sp-slow-effects: ease-out;
+  }
+}
+
+/* ---------- press feedback and shape morph ---------- */
+.btn, .icon-btn, .chip, .step, .node, .choice, .opt, .tilebtn, .grade, .list-item, .nav-item, .match button, .tile, .card {
+  transition: transform var(--sp-fast-spatial-d) var(--sp-fast-spatial), border-radius var(--sp-fast-spatial-d) var(--sp-fast-spatial),
+    background-color var(--sp-effects-d) var(--sp-effects), color var(--sp-effects-d) var(--sp-effects), border-color var(--sp-effects-d) var(--sp-effects), opacity var(--sp-effects-d) var(--sp-effects);
+}
+.btn:active:not(:disabled) { transform: scale(0.95); border-radius: 18px; }
+.btn-lg:active:not(:disabled) { border-radius: 22px; }
+.icon-btn:active:not(:disabled) { transform: scale(0.85); border-radius: 14px; }
+.chip:active { transform: scale(0.93); }
+button.card:active { transform: scale(0.98); border-radius: 18px; }
+.step:active:not(:disabled), .node:active, .choice:active, .opt:active:not(:disabled), button.list-item:active { transform: scale(0.975); }
+.grade:active { transform: scale(0.9); border-radius: 14px; }
+.nav-item:active { transform: scale(0.88); }
+.tilebtn:active:not(:disabled) { transform: scale(0.88); }
+.match button:active:not(.gone) { transform: scale(0.95); }
+.opt[aria-pressed="true"] { transform: scale(1.015); }
+.choice[aria-pressed="true"] { transform: scale(1.01); }
+button.chip[aria-pressed="true"] { transform: scale(1.04); }
+
+/* ---------- navigation indicator ---------- */
+.nav-inner { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; }
+.nav-pill { position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc((100% - 12px) / 5); border-radius: 22px; background: var(--primary-c); pointer-events: none;
+  transform: translateX(calc(var(--i, 0) * 100%)); transition: transform var(--sp-spatial-d) var(--sp-spatial); }
+.nav-item { position: relative; z-index: 1; background: none !important; }
+.nav-item[aria-current="page"] svg { animation: icon-pop var(--sp-fast-spatial-d) var(--sp-fast-spatial); }
+@keyframes icon-pop { from { transform: scale(0.7) translateY(3px); } }
+@media (min-width: 900px) {
+  .nav-inner { grid-template-columns: 1fr; grid-auto-rows: 1fr; }
+  .nav-pill { top: 6px; left: 6px; right: 6px; bottom: auto; width: auto; height: calc((100% - 12px) / 5); transform: translateY(calc(var(--i, 0) * 100%)); }
+}
+
+/* ---------- entrances ---------- */
+@keyframes enter { from { transform: translateY(20px) scale(0.985); } }
+@keyframes enter-o { from { opacity: 0; } }
+@keyframes rise-in { from { transform: translateY(14px) scale(0.92); } }
+@keyframes pop-in { from { transform: scale(0.55); } }
+@keyframes grow-y { from { transform: scaleY(0); } }
+@keyframes grow-x { from { transform: scaleX(0); } }
+@keyframes stamp { from { transform: scale(2.2) rotate(-8deg); } }
+@keyframes card-in { from { transform: translateX(44px) scale(0.94) rotate(1.5deg); } }
+@keyframes overlay-in { from { transform: translateY(7%) scale(0.94); } }
+@keyframes overlay-out { to { transform: translateY(5%) scale(0.95); opacity: 0; } }
+@keyframes sheet-in { from { transform: translateY(100%); } }
+@keyframes wobble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg) scale(1.1); } 60% { transform: rotate(9deg) scale(1.05); } }
+@keyframes shake { 18% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 62% { transform: translateX(-4px); } 82% { transform: translateX(2px); } }
+@keyframes pop { from { transform: scale(0.94); } }
+
+.page > * { animation: enter var(--sp-slow-spatial-d) var(--sp-slow-spatial) backwards, enter-o var(--sp-slow-effects-d) var(--sp-slow-effects) backwards; animation-delay: calc(var(--n, 0) * 45ms); }
+.page > :nth-child(2) { --n: 1; } .page > :nth-child(3) { --n: 2; } .page > :nth-child(4) { --n: 3; } .page > :nth-child(5) { --n: 4; }
+.page > :nth-child(6) { --n: 5; } .page > :nth-child(7) { --n: 6; } .page > :nth-child(n+8) { --n: 7; }
+.plan > *, .tiles > *, .nodes > * { animation: rise-in var(--sp-spatial-d) var(--sp-spatial) backwards, enter-o var(--sp-effects-d) var(--sp-effects) backwards; animation-delay: calc(140ms + var(--m, 0) * 50ms); }
+.plan > :nth-child(2), .tiles > :nth-child(2), .nodes > :nth-child(2) { --m: 1; } .plan > :nth-child(3), .tiles > :nth-child(3), .nodes > :nth-child(3) { --m: 2; }
+.plan > :nth-child(4), .tiles > :nth-child(4), .nodes > :nth-child(4) { --m: 3; } .tiles > :nth-child(n+5), .nodes > :nth-child(n+5) { --m: 4; }
+
+.overlay-wrap { position: fixed; inset: 0; z-index: 50; transform-origin: 50% 80%; animation: overlay-in var(--sp-slow-spatial-d) var(--sp-slow-spatial) backwards, enter-o var(--sp-slow-effects-d) var(--sp-slow-effects) backwards; }
+.overlay-wrap.out { animation: overlay-out 170ms cubic-bezier(0.3, 0, 0.8, 0.15) forwards; }
+.overlay-wrap > .fullscreen { position: absolute; z-index: 1; }
+
+.scrim { animation: enter-o var(--sp-effects-d) var(--sp-effects) backwards; }
+.sheet { animation: sheet-in var(--sp-slow-spatial-d) var(--sp-slow-spatial) backwards; margin-bottom: -48px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); touch-action: pan-y; }
+.sheet-head { touch-action: none; cursor: grab; padding: 4px 0 8px; margin: -4px 0 4px; }
+.sheet-head:active { cursor: grabbing; }
+.sheet-grab { margin-bottom: 8px; transition: width var(--sp-fast-spatial-d) var(--sp-fast-spatial), background-color 0.2s; }
+.sheet-head:active .sheet-grab { width: 52px; background: var(--faint); }
+@media (min-width: 700px) { .sheet { margin-bottom: 0; padding-bottom: 24px; } }
+.toast { animation: rise-in var(--sp-spatial-d) var(--sp-spatial) backwards, enter-o var(--sp-effects-d) var(--sp-effects) backwards; }
+
+/* ---------- study card ---------- */
+.flash.card-in { animation: card-in var(--sp-spatial-d) var(--sp-spatial) backwards, enter-o var(--sp-fast-effects-d) var(--sp-fast-effects) backwards; }
+.answer { animation: rise-in var(--sp-fast-spatial-d) var(--sp-fast-spatial) backwards, enter-o var(--sp-fast-effects-d) var(--sp-fast-effects) backwards; }
+.grades .grade { animation: rise-in var(--sp-fast-spatial-d) var(--sp-fast-spatial) backwards; animation-delay: calc(var(--n, 0) * 28ms); }
+.grades .grade:nth-child(2) { --n: 1; } .grades .grade:nth-child(3) { --n: 2; } .grades .grade:nth-child(4) { --n: 3; }
+.show-btn { animation: rise-in var(--sp-fast-spatial-d) var(--sp-fast-spatial) backwards; }
+.study-bar i, .bar > i { transition: width var(--sp-slow-spatial-d) var(--sp-slow-spatial); }
+.bar > i { transform-origin: left; animation: grow-x var(--sp-slow-spatial-d) var(--sp-slow-spatial) backwards; }
+.counts span { transition: color 0.2s; }
+
+/* ---------- exercises ---------- */
+.q-prompt { animation: rise-in var(--sp-spatial-d) var(--sp-spatial) backwards, enter-o var(--sp-effects-d) var(--sp-effects) backwards; }
+.opts .opt { animation: rise-in var(--sp-spatial-d) var(--sp-spatial) backwards; animation-delay: calc(var(--n, 0) * 35ms + 60ms); }
+.opts .opt:nth-child(2) { --n: 1; } .opts .opt:nth-child(3) { --n: 2; } .opts .opt:nth-child(4) { --n: 3; } .opts .opt:nth-child(5) { --n: 4; }
+.opt.right { animation: pop var(--sp-spatial-d) var(--sp-spatial); transform: scale(1.02); }
+.opt.wrong { animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+.answer-zone .tilebtn { animation: pop-in var(--sp-fast-spatial-d) var(--sp-fast-spatial) backwards; }
+.feedback { animation: sheet-in var(--sp-spatial-d) var(--sp-spatial) backwards; }
+.feedback.ok svg { animation: pop-in var(--sp-spatial-d) var(--sp-spatial) 80ms backwards; }
+.match button.gone { transition: transform 0.2s, opacity 0.2s; }
+.dots i { transition: width var(--sp-spatial-d) var(--sp-spatial), background-color var(--sp-effects-d); }
+.lesson-body > :not(.feedback):not(.sticky-actions), .ex-card { animation: rise-in var(--sp-spatial-d) var(--sp-spatial) backwards, enter-o var(--sp-effects-d) var(--sp-effects) backwards; animation-delay: calc(var(--n, 0) * 40ms); }
+.lesson-body > :nth-child(2) { --n: 1; } .lesson-body > :nth-child(3) { --n: 2; } .lesson-body > :nth-child(4) { --n: 3; } .lesson-body > :nth-child(n+5) { --n: 4; }
+
+/* ---------- results ---------- */
+.big.jp { animation: stamp var(--sp-slow-spatial-d) var(--sp-slow-spatial) 80ms backwards, enter-o var(--sp-effects-d) 80ms backwards; }
+.stat-row .stat { animation: rise-in var(--sp-spatial-d) var(--sp-spatial) backwards; animation-delay: calc(240ms + var(--n, 0) * 70ms); }
+.stat-row .stat:nth-child(2) { --n: 1; } .stat-row .stat:nth-child(3) { --n: 2; }
+.burst { position: fixed; left: 50%; top: 20%; width: 0; height: 0; pointer-events: none; z-index: 70; }
+.burst i { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 3px; background: var(--c, var(--primary)); opacity: 0;
+  animation: burst 0.9s cubic-bezier(0.1, 0.7, 0.3, 1) var(--d, 0ms) forwards; }
+@keyframes burst { 0% { opacity: 1; transform: translate(0, 0) rotate(0) scale(0.4); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1); } }
+
+/* ---------- controls ---------- */
+.switch::after { transition: transform var(--sp-fast-spatial-d) var(--sp-fast-spatial), width var(--sp-fast-spatial-d) var(--sp-fast-spatial), background-color var(--sp-effects-d) var(--sp-effects); }
+.switch:active::after { width: 30px; }
+.switch[aria-checked="true"]:active::after { transform: translateX(18px); }
+.seg { position: relative; gap: 0; }
+.seg::before { content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n, 3)); border-radius: 999px; background: var(--primary-c);
+  transform: translateX(calc(var(--i, 0) * 100%)); transition: transform var(--sp-spatial-d) var(--sp-spatial); }
+.seg button { position: relative; background: none !important; }
+.stepper button { transition: transform var(--sp-fast-spatial-d) var(--sp-fast-spatial), background-color 0.2s; }
+.stepper button:active:not(:disabled) { transform: scale(0.82); }
+.ring .value { transition: stroke-dashoffset var(--sp-slow-spatial-d) var(--sp-slow-spatial); }
+.bars .col i { transform-origin: 50% 100%; animation: grow-y var(--sp-spatial-d) var(--sp-spatial) backwards; animation-delay: calc(var(--k, 0) * 22ms + 120ms); }
+.chip-primary svg { animation: wobble 0.8s var(--sp-effects) 0.5s; }
+
+/* ---------- user preference ---------- */
+:root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+
+.sheet-head h2 { margin: 0 0 8px; }
+.list-item > svg { flex: none; }

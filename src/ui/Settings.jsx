@@ -2,7 +2,8 @@ import React, { useRef, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Switch, Seg, Stepper, Banner, useApp, PageHead, plural } from "./common.jsx";
 import { signOut, cloudConfigured } from "../lib/auth.js";
-import { setHaptics } from "../lib/haptics.js";
+import { setHaptics, canHaptic, onIOS } from "../lib/haptics.js";
+import * as hap from "../lib/haptics.js";
 import { SOURCE } from "../content/lessons.js";
 
 export const APP_VERSION = "4.0.0";
@@ -143,7 +144,22 @@ export function Settings() {
           <div>Theme</div>
           <Seg label="Theme" value={s.theme} onChange={(v) => set({ theme: v })} options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }, { value: "system", label: "System" }]} />
         </div>
-        <Row title="Haptic feedback" sub="Short vibration on answers (Android)"><Switch checked={s.haptics} onChange={(v) => { set({ haptics: v }); setHaptics(v); }} label="Haptics" /></Row>
+        <Row title="Haptic feedback" sub={canHaptic ? (onIOS ? "Taps and answers play a light tick (iOS 17.4 or newer)" : "Short vibrations on taps and answers") : "This browser can't vibrate. Works on Android Chrome and iPhone Safari."}><Switch checked={s.haptics} onChange={(v) => { set({ haptics: v }); setHaptics(v); if (v) hap.medium(); }} label="Haptics" /></Row>
+        {s.haptics && canHaptic && (
+          <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }} data-haptic="none">
+            <div><div>Try haptics</div><div className="small dim">Tap, good, wrong, finished</div></div>
+            <div className="row-wrap">
+              <button className="btn btn-soft btn-sm" onClick={hap.tap}>Tap</button>
+              <button className="btn btn-soft btn-sm" onClick={hap.good}>Good</button>
+              <button className="btn btn-soft btn-sm" onClick={hap.bad}>Wrong</button>
+              <button className="btn btn-soft btn-sm" onClick={hap.done}>Finished</button>
+            </div>
+          </div>
+        )}
+        <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+          <div><div>Animations</div><div className="small dim">Springy motion. Reduced keeps screens still. Follows your device's reduce-motion setting too.</div></div>
+          <Seg label="Animations" value={s.motion || "full"} onChange={(v) => set({ motion: v })} options={[{ value: "full", label: "Full" }, { value: "reduced", label: "Reduced" }]} />
+        </div>
       </Section>
 
       <Section title="Your data" hint="A backup file holds every deck, card and review. Restoring merges it with what is on this device.">

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
-import { useApp, plural } from "./common.jsx";
+import { useApp, plural, Burst } from "./common.jsx";
 import { buildSession, buildCounts, LEARN_AHEAD } from "../lib/queue.js";
 import { previewDelays, LEARNING, RELEARNING, NEW } from "../lib/fsrs.js";
 import { fmtSpan } from "../lib/time.js";
@@ -70,7 +70,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
     setLearnQ(nl);
     setCur(pickNext(store, nm, nl));
     setShown(false);
-    if (g === 1) hap.bad(); else hap.good();
+    if (g === 1) hap.bad(); else if (g === 2) hap.medium(); else if (g === 3) hap.good(); else hap.success();
   }, [cur, shown, main, learnQ, finished, tally, store]);
 
   const undo = useCallback(() => {
@@ -154,18 +154,18 @@ export function Study({ opts = {}, onClose, onOpen }) {
         </div>
 
         <div className="study-body">
-          <div className="flash" onClick={!shown ? reveal : undefined}>
+          <div className="flash card-in" key={`${cur.id}-${tally[1] + tally[2] + tally[3] + tally[4]}`} onClick={!shown ? reveal : undefined}>
             <span className="chip tag">{deck?.name || ""}</span>
             <Front kind={kind} card={card} />
             {shown && <Back kind={kind} card={card} related={related} />}
             {!shown && <span className="reveal-hint">Tap to show the answer</span>}
           </div>
           {!shown ? (
-            <button className="btn btn-primary show-btn btn-block" onClick={reveal}>Show answer</button>
+            <button className="btn btn-primary show-btn btn-block" data-haptic="none" onClick={reveal}>Show answer</button>
           ) : (
             <div className="grades">
               {[["Again", 1], ["Hard", 2], ["Good", 3], ["Easy", 4]].map(([label, g]) => (
-                <button key={g} className={`grade g${g}`} onClick={() => grade(g)}>
+                <button key={g} className={`grade g${g}`} data-haptic="none" onClick={() => grade(g)}>
                   <span>{label}</span>
                   <small>{delays ? fmtSpan(delays[g]) : ""}</small>
                 </button>
@@ -248,6 +248,7 @@ function Summary({ store, tally, total, onClose, onOpen, opts }) {
             </>
           ) : (
             <>
+              <Burst />
               <div className="big jp" lang="ja" style={{ fontSize: "4rem", color: "var(--primary)" }}>完了</div>
               <h1>Session complete</h1>
               <div className="stat-row">
