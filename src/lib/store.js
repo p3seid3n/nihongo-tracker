@@ -5,7 +5,7 @@ import { createStore as idbCreateStore, keys as idbKeys, getMany, setMany, delMa
 import { DEFAULT_CFG, review as fsrsReview, NEW, REVIEW } from "./fsrs.js";
 import { addDays, dayKey, monthKey, DAY } from "./time.js";
 import { mergeSlice, sliceKind } from "./merge.js";
-import { uuid, deckOf } from "./ids.js";
+import { uuid, deckOf, baseId, isProd } from "./ids.js";
 import { KANA_DECKS, kanaContent } from "./kana.js";
 
 export const SCHEMA_VERSION = 4;
@@ -30,6 +30,12 @@ export const DEFAULT_SETTINGS = {
   speechRate: 1,
   voiceURI: "",
   motion: "full",
+  recall: true, // recall cards: say or type the Japanese for a word you already recognise
+  recallAfter: 4, // a word gets a recall card once its recognition card is stable for this many days
+  recallNewPerDay: 5,
+  effortBudget: 200, // daily effort points (a review costs 1, a recall review 3, see effort.js)
+  autoThrottle: true, // fewer new cards while a backlog builds up or recall drops
+  pretest: false, // guess before the first look at a new card
   u: 0,
 };
 
@@ -202,6 +208,9 @@ export class Store {
 
   // ---- helpers
   fsrsCfg() { return { ...DEFAULT_CFG, retention: this.settings.retention || 0.9 }; }
+  /** Recall cards skip the learning steps: you already know the word, this only tests production. */
+  prodCfg() { return { ...this.fsrsCfg(), learningSteps: [] }; }
+  cfgFor(cardId) { return isProd(cardId) ? this.prodCfg() : this.fsrsCfg(); }
   lessonCfg() { return { ...DEFAULT_CFG, retention: this.settings.retention || 0.9, learningSteps: [], relearningSteps: [], fuzz: false }; }
 
   deckList({ includeDeleted = false } = {}) {
@@ -223,7 +232,7 @@ export class Store {
 
   card(cardId) {
     const d = deckOf(cardId);
-    return this.content[d]?.[cardId] || null;
+    return this.content[d]?.[baseId(cardId)] || null;
   }
   rec(cardId) {
     return this.prog[deckOf(cardId)]?.[cardId] || null;
@@ -332,7 +341,7 @@ export class Store {
     const deckId = deckOf(cardId);
     const prog = (this.prog[deckId] = this.prog[deckId] || {});
     const prev = prog[cardId] || null;
-    const next = fsrsReview(prev, grade, now, this.fsrsCfg(), cardId);
+    const next = fsrsReview(prev, grade, now, this.cfgFor(cardId), cardId);
     if (prev?.sus) next.sus = prev.sus;
     prog[cardId] = next;
     const month = monthKey(now);
@@ -355,6 +364,20 @@ export class Store {
     if (i >= 0) rows[i] = [row[0], row[1], 0, 0, row[4], 0];
     this.touch(`prog:${deckId}`);
     this.touch(`log:${month}`);
+    this.emit();
+  }
+
+  /** Save (or clear) your own mnemonic for a card. */
+  setNote(cardId, text) {
+    const id = baseId(cardId);
+    const deckId = deckOf(id);
+    const prog = (this.prog[deckId] = this.prog[deckId] || {});
+    const cur = prog[id] || { st: NEW, s: 0, d: 0, due: 0, last: 0, reps: 0, lapses: 0, step: 0 };
+    const next = { ...cur, u: Date.now() };
+    const t = String(text || "").trim().slice(0, 600);
+    if (t) next.note = t; else delete next.note;
+    prog[id] = next;
+    this.touch(`prog:${deckId}`);
     this.emit();
   }
 

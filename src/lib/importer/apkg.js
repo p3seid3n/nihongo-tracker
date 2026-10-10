@@ -9,6 +9,7 @@ import { decompress as zstdDecompress } from "fzstd";
 import { DAY, monthKey } from "../time.js";
 
 import { parseMediaList, soundOf } from "./media.js";
+import { parsePitch, packPitch } from "../pitch.js";
 
 const WANTED = ["collection.anki21b", "collection.anki21", "collection.anki2", "media"];
 
@@ -129,6 +130,8 @@ export function mapNote(modelName, fieldNames, fields, deckName) {
         sentE: cleanText(get("sentence meaning")),
         notes: cleanText(get("notes"), { breaks: true }),
         freq: cleanText(get("frequency")),
+        pitch: packPitch(parsePitch(get("pitch accent"))),
+        pn: cleanText(get("pitch accent notes"), { breaks: true }),
         wa: soundOf(get("word audio", "audio", "vocab audio")),
         sa: soundOf(get("sentence audio")),
       }),

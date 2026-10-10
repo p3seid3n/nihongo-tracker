@@ -9,7 +9,7 @@ import { loadVoices, pickVoice, say, getAudioInfo, clearAudio, ttsSupported, aud
 import { KANJI_FONTS, ensureFont } from "../lib/fonts.js";
 import { recognitionSupported, recordingSupported } from "../lib/pronounce.js";
 
-export const APP_VERSION = "4.3.0";
+export const APP_VERSION = "4.4.0";
 
 function Row({ title, sub, children }) {
   return (
@@ -210,6 +210,12 @@ export function Settings() {
         <Row title="New words per day"><Stepper value={s.newPerDay.vocab} min={0} max={60} label="new words" onChange={(v) => setPer("vocab", v)} /></Row>
         <Row title="Other decks per day"><Stepper value={s.newPerDay.generic} min={0} max={60} label="new cards" onChange={(v) => setPer("generic", v)} /></Row>
         <Row title="Review limit per day"><Stepper value={s.maxReviews} min={25} max={1000} step={25} label="review limit" onChange={(v) => set({ maxReviews: v })} /></Row>
+        <Row title="Daily effort budget" sub="Every answer costs points: a review 1, a new card 2, a recall review 3, a new recall card 4. When the points run out, the rest waits for tomorrow."><Stepper value={s.effortBudget ?? 200} min={40} max={1000} step={20} label="effort points" onChange={(v) => set({ effortBudget: v })} /></Row>
+        <Row title="Slow down new cards when busy" sub="Fewer new cards while many reviews are due or your recall this week is below 80%."><Switch checked={s.autoThrottle !== false} onChange={(v) => set({ autoThrottle: v })} label="Slow down new cards when busy" /></Row>
+        <Row title="Recall cards" sub="Once you recognise a word well, you also get asked to say it in Japanese: you see the meaning and type the word."><Switch checked={s.recall !== false} onChange={(v) => set({ recall: v })} label="Recall cards" /></Row>
+        {s.recall !== false && <Row title="New recall cards per day"><Stepper value={s.recallNewPerDay ?? 5} min={0} max={30} label="new recall cards" onChange={(v) => set({ recallNewPerDay: v })} /></Row>}
+        {s.recall !== false && <Row title="Start recall after" sub="How many days a word must stay in your memory first."><Stepper value={s.recallAfter ?? 4} min={1} max={60} label="days before recall" onChange={(v) => set({ recallAfter: v })} /></Row>}
+        <Row title="Weak spots round" sub="At the end of a session, a few cards you missed twice in the last three days come back once more."><Switch checked={s.weakSpots !== false} onChange={(v) => set({ weakSpots: v })} label="Weak spots round" /></Row>
         <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
           <div><div>Target retention</div><div className="small dim">How often you want to remember a card when it comes back</div></div>
           <Seg label="Target retention" value={s.retention} onChange={(v) => set({ retention: v })} options={[{ value: 0.85, label: "85%" }, { value: 0.9, label: "90%" }, { value: 0.95, label: "95%" }]} />

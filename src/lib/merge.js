@@ -49,6 +49,31 @@ export function mergeUnion(local = {}, remote = {}) {
   return out;
 }
 
+/** Card content: union by id, and a card present on both sides gains the fields only the other side has
+ *  (for example pitch accent after one device re-imports its deck). Where both sides have a value, local wins. */
+export function mergeContent(local = {}, remote = {}) {
+  const out = { ...local };
+  for (const [id, r] of Object.entries(remote)) {
+    const l = out[id];
+    if (!l) { out[id] = r; continue; }
+    if (!r || typeof r !== "object") continue;
+    let changed = false;
+    const merged = { ...l };
+    for (const [k, v] of Object.entries(r)) {
+      if (k === "x") continue;
+      if (!(k in merged) || merged[k] === "" || merged[k] == null) { merged[k] = v; changed = true; }
+    }
+    if (r.x && typeof r.x === "object") {
+      const x = { ...(l.x || {}) };
+      let xc = false;
+      for (const [k, v] of Object.entries(r.x)) if (!(k in x) || x[k] === "" || x[k] == null) { x[k] = v; xc = true; }
+      if (xc) { merged.x = x; changed = true; }
+    }
+    if (changed) out[id] = merged;
+  }
+  return out;
+}
+
 /** Review-log rows are [ts, cardId, grade, ms, stateBefore, ivlDays]. Union by ts+card.
  *  A grade of 0 marks a row that was undone; it wins over the original. */
 export function mergeLog(local = [], remote = []) {
@@ -75,7 +100,7 @@ export function mergeSlice(key, local, remote) {
     case "decks":
     case "lessons":
     case "prog": return mergeLWWMap(local, remote);
-    case "content": return mergeUnion(local, remote);
+    case "content": return mergeContent(local, remote);
     case "log": return mergeLog(local, remote);
     default: return local ?? remote;
   }

@@ -51,6 +51,13 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 * **Listening:** by default cards read the word when they appear and the example sentence when you reveal the answer. Settings → Listening and speaking lets you read the word on card open, with the answer, or never, and the sentence with the answer or never. Without recordings the phone's Japanese voice is used. If the device has no Japanese voice the app stays silent instead of reading Japanese with the wrong voice; Settings explains how to install one.
 * **Pronunciation check:** the microphone button on a card listens through the browser's speech recognition (ja-JP) and compares what it heard with the word or sentence, character by character, with a score. Kanji written in kana by the recogniser still count when the reading is known. Limits: Chrome/Android sends the audio to Google's recogniser, so it needs a connection; Safari and installed iPhone apps may not allow recognition at all, in which case the sheet falls back to recording you so you can compare by ear.
 * **Writing practice:** "Write N characters" on Today, plus a pen button on kana and kanji cards. Trace with a stroke-by-stroke guide, or write from memory; strokes must be drawn in the right order and direction (the app says which stroke was expected), with hints and an animated demo. Stroke data is KanjiVG (© Ulrich Apel, CC BY-SA 3.0), built into `public/strokes/` by `node scripts/build-strokes.mjs`, fetched per character when first needed and cached for offline use.
+* **Recall cards:** once a vocabulary word has stayed in your memory for 4 days (Settings → Pace → Start recall after), it also gets a recall card: you see the meaning and give the Japanese. Type romaji or kana (romaji turns into kana as you type; typing the kanji also counts). Exact answers suggest Good, one slip in a word of four or more kana suggests Hard, anything else Again, and you still choose the grade. A recall card is a second schedule for the same word (`deck.key~p` in the same `prog` slice, so it syncs like any other card) with no learning steps. Switch off or limit in Settings. Not built: speaking the answer instead of typing it.
+* **Effort budget:** every answer costs points (review 1, new card 2, recall review 3, new recall card 4) and a day has a budget (Settings, default 200). When it runs out, the rest waits for tomorrow, with "Keep going anyway" if you want more. The Today screen shows the meter. `src/lib/effort.js`, `src/lib/queue.js`.
+* **Slow-down for new cards:** new cards (and new recall cards) are scaled down while the due work is more than half the budget (to zero at a full budget) and while recall over the last 7 days is under 80 % (zero under 70 %, with at least 30 answers). Today says how many were held back and why. Asking for "5 more new cards" overrides it. Settings can turn it off.
+* **Leech rescue:** after the 8th lapse of a card (then every 4th) a sheet asks for a mnemonic of your own and shows the stories of its kanji and other sentences with the word. The mnemonic is stored as `note` on the card's progress record, shown on the back, and editable from any card (pencil link). Or suspend the card.
+* **More sentences per word:** the back of a vocabulary card cycles through its own sentence and others from your cards in which every other word and grammar point is something you already know (`src/lib/sentenceIndex.js`, built in the background when a session opens).
+* **Weak spots:** at the end of a session, up to 6 cards you missed twice in the last three days (and that aren't due today) come back once more. Settings can turn it off.
+* **Pitch accent:** Kaishi's pitch field is read on import and shown on the back of vocabulary cards (overline, step down, and the pattern name). Decks imported before 4.4 need the same file imported again; progress is kept. Content from another device that has pitch is merged in on sync.
 * **Backups:** Settings → Export backup (JSON). Restore merges.
 
 ## Development
@@ -58,12 +65,12 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 ```
 npm install
 npm run dev        # local
-npm test           # unit tests (441)
+npm test           # unit tests (501)
 npm run build
 node scripts/make-icons.mjs   # regenerate icons
 node scripts/build-strokes.mjs # regenerate public/strokes from KanjiVG
 # browser tests (need Chromium; start `npx vite preview --port 4173` first)
-node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud, sentences, layout, settings-prefs, lessons2
+node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud, sentences, layout, settings-prefs, lessons2, recall
 ```
 
 Keyboard in a study session: Space = show answer / Good, 1–4 = grade, Z = undo.

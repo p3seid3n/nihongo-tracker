@@ -74,11 +74,23 @@ export function Home() {
         </div>
       </section>
 
+      {(counts.effort.spent > 0 || counts.total > 0) && (
+        <section className="effort" aria-label="Effort today">
+          <div className="spread"><span className="small dim">Effort today</span><span className="small dim num">{counts.effort.spent + (counts.effort.planned || 0)} of {counts.effort.budget} points</span></div>
+          <div className="meter" role="progressbar" aria-valuemin={0} aria-valuemax={counts.effort.budget} aria-valuenow={Math.min(counts.effort.budget, counts.effort.spent)}>
+            <i className="done" style={{ width: `${Math.min(100, (counts.effort.spent / counts.effort.budget) * 100)}%` }} />
+            <i className="plan" style={{ width: `${Math.min(100, ((counts.effort.planned || 0) / counts.effort.budget) * 100)}%` }} />
+          </div>
+          {counts.throttle.held > 0 && counts.throttle.reason && <p className="small dim">{plural(counts.throttle.held, "new card")} held back: {counts.throttle.reason}.</p>}
+          {counts.deferred > 0 && <p className="small dim">{plural(counts.deferred, "card")} will wait for tomorrow because today's points are used up.</p>}
+        </section>
+      )}
+
       <section className="plan" aria-label="Plan">
         <Step
           icon="cards" done={remaining === 0}
           title={remaining === 0 ? "Reviews and new cards" : `Study ${plural(remaining, "card")}`}
-          sub={remaining === 0 ? (counts.newAvailable ? "All caught up for today" : "Nothing due") : `${counts.review} reviews · ${counts.new} new${counts.learn ? ` · ${counts.learn} learning` : ""}`}
+          sub={remaining === 0 ? (counts.deferred > 0 ? "Today's effort budget is used up" : counts.newAvailable ? "All caught up for today" : "Nothing due") : `${counts.review} reviews · ${counts.new} new${counts.learn ? ` · ${counts.learn} learning` : ""}${counts.prodReview + counts.prodNew ? ` (${counts.prodReview + counts.prodNew} are recall cards)` : ""}`}
           onClick={() => open({ type: "study" })} disabled={remaining === 0} />
         {writeSet.length >= 1 && (
           <Step icon="pen" done={wrote} title={`Write ${plural(writeSet.length, "character")}`} sub={`Stroke order practice: ${writeSet.slice(0, 4).map((x) => x.ch).join(" ")}${writeSet.length > 4 ? " …" : ""}`} onClick={() => open({ type: "write", items: writeSet })} />
@@ -108,7 +120,7 @@ export function Home() {
           <p className="dim">You're done for today. Want to do a little more?</p>
           <div className="row-wrap" style={{ justifyContent: "center" }}>
             {counts.newAvailable > 0 && <button className="btn btn-tonal" onClick={() => open({ type: "study", opts: { extraNew: 5 } })}>5 more new cards</button>}
-            {counts.overflow > 0 && <button className="btn btn-tonal" onClick={() => open({ type: "study", opts: { extraReviews: true } })}>Reviews beyond today's cap</button>}
+            {(counts.overflow > 0 || counts.deferred > 0) && <button className="btn btn-tonal" onClick={() => open({ type: "study", opts: { extraReviews: true } })}>Keep going beyond today's limits</button>}
           </div>
         </section>
       )}
