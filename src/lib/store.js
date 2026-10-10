@@ -30,6 +30,8 @@ export const DEFAULT_SETTINGS = {
   speechRate: 1,
   voiceURI: "",
   motion: "full",
+  readerGloss: true, // glosses above words you have not learned, in the reader
+  readerTrans: false, // English under each line in the reader
   recall: true, // recall cards: say or type the Japanese for a word you already recognise
   recallAfter: 4, // a word gets a recall card once its recognition card is stable for this many days
   recallNewPerDay: 5,
@@ -422,6 +424,15 @@ export class Store {
     (this.log[month] = this.log[month] || []).push([now, `g.${lessonId}`, grade, Math.min(Math.max(0, Math.round(ms)), 3600000), 9, 0]);
     this.touch(`log:${month}`);
     this.emit();
+  }
+
+  /** Remember that a reading passage or writing prompt was finished (and count it as activity for streaks). */
+  markPractice(kind, id, { ms = 0, now = Date.now() } = {}) {
+    const key = `${kind}.${id}`;
+    const prev = this.lessons[key] || {};
+    this.lessons = { ...this.lessons, [key]: { done: now, tries: (prev.tries || 0) + 1, first: prev.first || now, u: now } };
+    this.touch("lessons");
+    this.logLesson(key, 1, ms, now);
   }
 
   markLessonsDone(ids, now = Date.now()) {

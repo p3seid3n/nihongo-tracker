@@ -164,7 +164,7 @@ const addTo = (map, key, cand) => {
  * Build the lexicon from the store.
  * learned: cards you have started. Everything else in your decks is known but still new.
  */
-export function buildLexicon(store, now = Date.now()) {
+export function buildLexicon(store, now = Date.now(), { extra = [] } = {}) {
   const surf = new Map(); // surface -> candidates
   const entries = [];
   const kanjiMap = new Map();
@@ -191,6 +191,59 @@ export function buildLexicon(store, now = Date.now()) {
     if ([...surface].length > maxLen) maxLen = [...surface].length;
   };
 
+  // inflected forms, casual contractions and derived verbs of a dictionary word (shared by decks and reader words)
+  const addInflections = (e, c) => {
+    for (const shape of wordShape(c.f, c.r, c.m)) {
+      const forms = shape.cls === "iadj" || shape.cls === "ii" ? ADJ_FORMS : VERB_FORMS;
+      for (const form of forms) {
+        const segs = conjugate(shape, form);
+        if (!segs) continue;
+        const text = segs.map((s) => s.t).join("");
+        if (!text || text === c.f) continue;
+        register(text, { type: "word", entry: e, form, cost: 1.05 });
+      }
+      // casual contractions of 〜ている, and derived verbs (potential, passive, causative) with their own forms
+      if (shape.cls !== "iadj" && shape.cls !== "ii") {
+        const te = conjugate(shape, "te");
+        if (te) {
+          const t = te.map((x) => x.t).join("");
+          for (const [suffix, form] of [["る", "teiru"], ["た", "teita"], ["ない", "teinai"]]) register(t + suffix, { type: "word", entry: e, form, cost: 1.15 });
+        }
+        if (shape.cls !== "kuru") {
+          for (const derived of ["potential", "passive", "causative", "tai"]) {
+            const dsegs = conjugate(shape, derived);
+            if (!dsegs) continue;
+            const text = dsegs.map((x) => x.t).join("");
+            const head = (shape.pre || "") + (shape.w || "");
+            if (!text.startsWith(head)) continue;
+            // 〜たい behaves like an い-adjective (買いたかった), the others like a る-verb
+            const shape2 = { pre: shape.pre, w: shape.w, k: shape.k, ok: text.slice(head.length), cls: derived === "tai" ? "iadj" : "ru" };
+            for (const form of derived === "tai" ? ADJ_FORMS : VERB_FORMS) {
+              if (form === "stem") continue;
+              const segs2 = conjugate(shape2, form);
+              if (!segs2) continue;
+              register(segs2.map((x) => x.t).join(""), { type: "word", entry: e, form: derived, cost: 1.2 });
+            }
+          }
+        }
+      }
+      // the same forms written in kana (many sentences spell 来て, 良く or 置き in kana)
+      if (shape.w && c.r && shape.cls !== "suru" && shape.cls !== "kuru") {
+        const kana = { w: "", k: "", ok: c.r, cls: shape.cls };
+        for (const form of forms) {
+          if (form === "stem") continue;
+          const segs = conjugate(kana, form);
+          const text = segs ? segs.map((x) => x.t).join("") : "";
+          if (text.length >= 2 && text !== c.r) register(text, { type: "word", entry: e, form, cost: 1.45 });
+        }
+      }
+      if (shape.cls !== "iadj" && shape.cls !== "ii") {
+        const stem = conjugate(shape, "stem");
+        if (stem) { const t = stem.map((s) => s.t).join("") + "ましょう"; register(t, { type: "word", entry: e, form: "polite-vol", cost: 1.05 }); }
+      }
+    }
+  };
+
   // vocabulary decks
   for (const deck of store.deckList()) {
     if (deck.kind !== "vocab") continue;
@@ -204,55 +257,7 @@ export function buildLexicon(store, now = Date.now()) {
       entries.push(e);
       register(c.f, { type: "word", entry: e, cost: 1 });
       if (c.r && c.r !== c.f && KANJI_RE.test(c.f) && [...c.r].length >= 2) register(c.r, { type: "word", entry: e, cost: 1.4, alias: true });
-      // inflected forms
-      for (const shape of wordShape(c.f, c.r, c.m)) {
-        const forms = shape.cls === "iadj" || shape.cls === "ii" ? ADJ_FORMS : VERB_FORMS;
-        for (const form of forms) {
-          const segs = conjugate(shape, form);
-          if (!segs) continue;
-          const text = segs.map((s) => s.t).join("");
-          if (!text || text === c.f) continue;
-          register(text, { type: "word", entry: e, form, cost: 1.05 });
-        }
-        // casual contractions of 〜ている, and derived verbs (potential, passive, causative) with their own forms
-        if (shape.cls !== "iadj" && shape.cls !== "ii") {
-          const te = conjugate(shape, "te");
-          if (te) {
-            const t = te.map((x) => x.t).join("");
-            for (const [suffix, form] of [["る", "teiru"], ["た", "teita"], ["ない", "teinai"]]) register(t + suffix, { type: "word", entry: e, form, cost: 1.15 });
-          }
-          if (shape.cls !== "kuru") {
-            for (const derived of ["potential", "passive", "causative"]) {
-              const dsegs = conjugate(shape, derived);
-              if (!dsegs) continue;
-              const text = dsegs.map((x) => x.t).join("");
-              const head = (shape.pre || "") + (shape.w || "");
-              if (!text.startsWith(head)) continue;
-              const shape2 = { pre: shape.pre, w: shape.w, k: shape.k, ok: text.slice(head.length), cls: "ru" };
-              for (const form of VERB_FORMS) {
-                if (form === "stem") continue;
-                const segs2 = conjugate(shape2, form);
-                if (!segs2) continue;
-                register(segs2.map((x) => x.t).join(""), { type: "word", entry: e, form: derived, cost: 1.2 });
-              }
-            }
-          }
-        }
-        // the same forms written in kana (many sentences spell 来て, 良く or 置き in kana)
-        if (shape.w && c.r && shape.cls !== "suru" && shape.cls !== "kuru") {
-          const kana = { w: "", k: "", ok: c.r, cls: shape.cls };
-          for (const form of forms) {
-            if (form === "stem") continue;
-            const segs = conjugate(kana, form);
-            const text = segs ? segs.map((x) => x.t).join("") : "";
-            if (text.length >= 2 && text !== c.r) register(text, { type: "word", entry: e, form, cost: 1.45 });
-          }
-        }
-        if (shape.cls !== "iadj" && shape.cls !== "ii") {
-          const stem = conjugate(shape, "stem");
-          if (stem) { const t = stem.map((s) => s.t).join("") + "ましょう"; register(t, { type: "word", entry: e, form: "polite-vol", cost: 1.05 }); }
-        }
-      }
+      addInflections(e, c);
     }
   }
 
@@ -266,7 +271,24 @@ export function buildLexicon(store, now = Date.now()) {
     const en = typeof w.en === "object" ? w.en.base : w.en;
     const e = { type: "word", f, r, m: en || "", gloss: shortGloss(en), learned: doneVocab.has(w.id), bank: true, order: 99999, card: null };
     // only when your decks do not already cover it
-    if (!surf.has(f)) register(f, { type: "word", entry: e, cost: 1.2 });
+    if (!surf.has(f)) {
+      register(f, { type: "word", entry: e, cost: 1.2 });
+      // typed in kana (writing practice): がくせい finds 学生
+      if (r && r !== f && KANJI_RE.test(f) && [...r].length >= 2 && !surf.has(r)) register(r, { type: "word", entry: e, cost: 1.5, alias: true });
+    }
+  }
+
+  // extra words (the reader's own vocabulary): explained like deck words, never counted as learned unless a deck or lesson says so
+  for (const w of extra) {
+    const existing = (surf.get(w.f) || []).find((x) => x.type === "word" && !x.form && !x.alias);
+    if (existing && !existing.entry.bank && !existing.entry.extra) continue; // a deck word: already complete
+    let e = existing ? existing.entry : null;
+    if (!e) {
+      e = { type: "word", f: w.f, r: w.r, m: w.m, gloss: shortGloss(w.m), learned: false, extra: true, order: 99998, card: null };
+      register(w.f, { type: "word", entry: e, cost: 1.2 });
+      if (w.r && w.r !== w.f && KANJI_RE.test(w.f) && [...w.r].length >= 2) register(w.r, { type: "word", entry: e, cost: 1.4, alias: true });
+    }
+    addInflections(e, { f: w.f, r: w.r, m: w.m });
   }
 
   // grammar
@@ -352,9 +374,19 @@ export function tokenize(text, lex, segs) {
     out.push({ ...t });
   }
   // two neighbouring kanji words that are not a word together are usually a compound we do not have (着物 → 着 + 物)
+  // (unless the furigana puts a boundary right there: 毎朝[まいあさ]六時[ろくじ] is two words the author wrote apart)
+  const apart = new Set();
+  if (segs) {
+    let pos = 0;
+    segs.forEach((sg, i) => {
+      pos += [...sg.t].length;
+      const next = segs[i + 1];
+      if (next && sg.r != null && sg.r !== "" && next.r != null && next.r !== "") apart.add(pos);
+    });
+  }
   for (let k = 0; k + 1 < out.length; k++) {
     const a = out[k], b = out[k + 1];
-    if (a.type === "word" && b.type === "word" && KANJI_RE.test(chars[a.b - 1]) && KANJI_RE.test(chars[b.a])) { a.type = "unknown"; a.cand = null; b.type = "unknown"; b.cand = null; }
+    if (a.type === "word" && b.type === "word" && KANJI_RE.test(chars[a.b - 1]) && KANJI_RE.test(chars[b.a]) && !apart.has(a.b)) { a.type = "unknown"; a.cand = null; b.type = "unknown"; b.cand = null; }
   }
   for (let k = out.length - 1; k > 0; k--) {
     if (out[k].type === "unknown" && out[k - 1].type === "unknown") { out[k - 1].b = out[k].b; out.splice(k, 1); }

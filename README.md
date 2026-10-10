@@ -58,6 +58,9 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 * **More sentences per word:** the back of a vocabulary card cycles through its own sentence and others from your cards in which every other word and grammar point is something you already know (`src/lib/sentenceIndex.js`, built in the background when a session opens).
 * **Weak spots:** at the end of a session, up to 6 cards you missed twice in the last three days (and that aren't due today) come back once more. Settings can turn it off.
 * **Pitch accent:** Kaishi's pitch field is read on import and shown on the back of vocabulary cards (overline, step down, and the pattern name). Decks imported before 4.4 need the same file imported again; progress is kept. Content from another device that has pitch is merged in on sync.
+* **Reading:** 20 short texts written for this app (Today → Reading, or the Grammar tab), from "My family" to a trip to Kyoto. Each shows a coverage bar: how much of the text is words and grammar you already know. Research suggests about 95–98 % known words for comfortable reading; the texts are short and every new word is glossed, so the shaded 90–97 % band is the target here and "Next up" suggests the unread text closest to it. Tap any word for the reading, meaning and kanji story; new words get a small English gloss above them (switchable); the English translation can be shown per line or for all; every line has its own speaker, and Listen reads the whole text. "New in this text" lists what is not learned yet. "I read it" is stored like a lesson (`read.<id>`) and counts as activity in the effort meter. The texts and their extra vocabulary are in `src/content/reader.js`; the maths is `src/lib/reader.js`.
+* **Writing prompts:** 12 prompts (Grammar tab → Writing prompts). Write a few sentences (romaji turns into kana as you type, `.` becomes 。), press Check, and the app lists the words and forms you used that you have not learned yet, grammar from lessons you have not done, anything it can't find, and which of the suggested words you used; then it shows one way to say it. It checks what you used, not whether the Japanese is correct (`src/lib/outputCheck.js`).
+* **Lexicon changes in 4.5:** 〜たい forms (買いたかった) are understood, adjacent kanji words that the furigana separates (毎朝六時) stay two words, and lesson-bank words typed in kana (がくせい) are found.
 * **Backups:** Settings → Export backup (JSON). Restore merges.
 
 ## Development
@@ -65,12 +68,12 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 ```
 npm install
 npm run dev        # local
-npm test           # unit tests (501)
+npm test           # unit tests (517)
 npm run build
 node scripts/make-icons.mjs   # regenerate icons
 node scripts/build-strokes.mjs # regenerate public/strokes from KanjiVG
 # browser tests (need Chromium; start `npx vite preview --port 4173` first)
-node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud, sentences, layout, settings-prefs, lessons2, recall
+node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud, sentences, layout, settings-prefs, lessons2, recall, reader
 ```
 
 Keyboard in a study session: Space = show answer / Good, 1–4 = grade, Z = undo.

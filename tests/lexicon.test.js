@@ -64,6 +64,12 @@ describe("tokenize", () => {
     const t = tok(s, "学生先生");
     expect(t.some((x) => x.type === "unknown")).toBe(true);
   });
+  it("finds a lesson-bank word written in kana", async () => {
+    const s = await mk();
+    const t = tok(s, "がくせいです");
+    const w = t.find((x) => x.text === "がくせい");
+    expect(w && w.type).toBe("word");
+  });
   it("keeps punctuation out of the content count", async () => {
     const s = await mk();
     const f = fit(tok(s, "私は学生です。"));

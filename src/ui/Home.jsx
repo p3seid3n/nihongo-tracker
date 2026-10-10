@@ -101,6 +101,9 @@ export function Home() {
         {grammarOn && stats.lessonsDue > 0 && (
           <Step icon="refresh" title={`Review grammar`} sub={`${plural(stats.lessonsDue, "lesson")} ready for a quick refresher`} onClick={() => open({ type: "review" })} />
         )}
+        {s.tracks?.vocab !== false && s.focus !== "maintain" && (
+          <Step icon="book" title="Reading" sub="Short texts with a bar for how much you already know. Tap any word." onClick={() => open({ type: "reader" })} />
+        )}
         {grammarOn && pool.length >= 6 && (
           <Step icon="book" title="Sentence practice" sub="Translate, fill gaps and pick the right form, using only what you know" onClick={() => open({ type: "sentences" })} />
         )}

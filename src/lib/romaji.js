@@ -40,15 +40,17 @@ const VOWELS = "aiueo";
 /**
  * Convert romaji in `input` to hiragana. Kana, kanji and punctuation pass through.
  * With `final`, a trailing n becomes ん; while typing it stays as typed.
+ * With `punct`, . , ! ? become 。 、 ！ ？ (for writing whole sentences).
  */
-export function toKana(input, { final = false } = {}) {
+const PUNCT = { ".": "。", ",": "、", "!": "！", "?": "？" };
+export function toKana(input, { final = false, punct = false } = {}) {
   const s = String(input ?? "");
   let out = "";
   let i = 0;
   while (i < s.length) {
     const ch = s[i];
     const lower = ch.toLowerCase();
-    if (!/[a-z'\-]/i.test(ch)) { out += ch; i++; continue; }
+    if (!/[a-z'\-]/i.test(ch)) { out += punct && PUNCT[ch] ? PUNCT[ch] : ch; i++; continue; }
     if (ch === "-") { out += "ー"; i++; continue; }
     if (ch === "'") { i++; continue; } // n' separator, no output of its own
     const kata = false;

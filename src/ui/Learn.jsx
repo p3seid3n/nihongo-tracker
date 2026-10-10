@@ -39,6 +39,8 @@ export function Learn() {
       <div className="row-wrap">
         <button className="btn btn-tonal" disabled={!done} onClick={() => open({ type: "review" })}><Icon name="refresh" /> Review{due.length ? ` (${due.length} due)` : ""}</button>
         <button className="btn btn-soft" disabled={pool.length < 6} onClick={() => open({ type: "sentences" })}><Icon name="book" /> Sentence practice</button>
+        <button className="btn btn-soft" onClick={() => open({ type: "reader" })}><Icon name="book" /> Reading</button>
+        <button className="btn btn-soft" onClick={() => open({ type: "output" })}><Icon name="pen" /> Writing prompts</button>
       </div>
       {pool.length < 6 && <p className="hint" style={{ marginTop: -8 }}>Sentence practice unlocks once you have studied a few vocabulary cards with example sentences.</p>}
 

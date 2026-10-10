@@ -62,7 +62,7 @@ export function startedSentences(store, now = Date.now()) {
   return out;
 }
 
-function displayTokens(toks, lex) {
+export function displayTokens(toks, lex) {
   return toks.map((t) => ({ text: t.text, m: t.m, type: t.type, gloss: t.gloss || "", known: !!t.known, info: t.type === "word" || t.type === "grammar" ? tokenInfo(t, lex) : null }));
 }
 

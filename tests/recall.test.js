@@ -22,6 +22,9 @@ describe("romaji to kana", () => {
     it(`${from} -> ${to}`, () => expect(toKana(from, { final: true })).toBe(to));
   }
   it("keeps an unfinished syllable while typing and turns a final n into ん", () => {
+    expect(toKana("desu.")).toBe("です.");
+    expect(toKana("desu. ne?", { punct: true })).toBe("です。 ね？");
+    expect(toKana("ichi, ni!", { punct: true, final: true })).toBe("いち、 に！");
     expect(toKana("ほんn")).toBe("ほんn");
     expect(toKana("ほんn", { final: true })).toBe("ほんん");
     expect(toKana("sh")).toBe("sh");

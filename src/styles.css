@@ -470,6 +470,8 @@ table.t td:first-child { font-family: var(--font); color: var(--dim); }
 .ex-frame { flex: 1; min-height: 0; width: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; }
 .ex-frame > .lesson-body { max-width: none; margin: 0; }
 .lesson-foot, .ex-frame > .sticky-actions { flex: none; width: 100%; max-width: 640px; margin: 0 auto; position: static; background: none; padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.foot-row { display: flex; gap: 10px; align-items: stretch; }
+.foot-row .btn-block { flex: 1; }
 .ex-frame > .feedback { position: static; flex: none; margin: 0; }
 /* Japanese inside English text stays whole: no line break between です's two letters */
 .prose, .note, .why, .hint, .ex-card .en, .q-instr { word-break: keep-all; overflow-wrap: anywhere; }
@@ -545,3 +547,42 @@ a.btn { text-decoration: none; }
 .pm { display: inline-block; border-top: 2px solid transparent; padding: 0 0.05em; margin-right: 1px; }
 .pm.hi { border-top-color: var(--primary); }
 .pm.drop { border-right: 2px solid var(--primary); padding-right: 0.12em; margin-right: 3px; }
+
+/* ---- reader and writing prompts ---- */
+.reader-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 16px; max-width: 640px; width: 100%; margin: 0 auto; padding: 14px 18px 24px; }
+.reader-body > * { flex-shrink: 0; }
+.rd-list { display: flex; flex-direction: column; gap: 10px; }
+.rd-card { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; text-align: left; background: var(--s2); border-radius: 22px; padding: 14px 16px; width: 100%; transition: background 0.15s, transform 0.1s; }
+.rd-card:active { transform: scale(0.99); background: var(--s3); }
+.rd-card.rec { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--primary) 55%, transparent); }
+.rd-card > .cov { flex: 1 0 100%; }
+.rd-card .grow { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rd-title { font-family: var(--font-jp); font-size: 1.15rem; font-weight: 700; }
+.rd-sub { color: var(--dim); font-size: 0.875rem; }
+.rd-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.rd-side b { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.rd-side small { color: var(--faint); font-size: 0.75rem; }
+.rd-h { font-family: var(--font-jp); font-size: 2rem; line-height: 1.2; }
+.cov { display: flex; flex-direction: column; gap: 6px; }
+.cov-bar { position: relative; height: 10px; border-radius: 99px; background: var(--s3); overflow: hidden; display: block; }
+.cov-bar i { display: block; height: 100%; border-radius: 99px; background: var(--sage); transition: width 0.4s var(--ease); }
+.cov-goal { position: absolute; top: 0; bottom: 0; left: 90%; width: 7%; background: color-mix(in srgb, var(--text) 18%, transparent); }
+.cov-stretch .cov-bar i { background: var(--sand); }
+.cov-hard .cov-bar i { background: var(--rose); }
+.cov-sweet .cov-bar i { background: var(--primary); }
+.cov-txt { font-size: 0.875rem; color: var(--dim); }
+.cov.mini .cov-bar { height: 6px; }
+.rd-toggles { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.9rem; color: var(--dim); }
+.rd-toggles label, label.rd-toggles { display: inline-flex; align-items: center; gap: 10px; }
+.rd-lines { display: flex; flex-direction: column; gap: 6px; }
+.rd-line { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: start; padding: 10px 12px; border-radius: 18px; transition: background 0.2s; }
+.rd-line.on { background: var(--s2); }
+.rd-jp { font-size: 1.3rem; line-height: 2.4; }
+.rd-tools { display: flex; flex-direction: column; gap: 0; }
+.rd-en { grid-column: 1 / -1; color: var(--dim); font-size: 0.95rem; animation: fade 0.18s var(--ease); }
+.rd-new { background: var(--s2); border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.rd-new ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.95rem; }
+.out-res { display: flex; flex-direction: column; gap: 12px; }
+.out-box { background: var(--s2); border-radius: 18px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; font-size: 0.95rem; }
+.out-box.warn { background: color-mix(in srgb, var(--sand) 14%, var(--s2)); }
+.out-box.ok { background: color-mix(in srgb, var(--sage) 16%, var(--s2)); }
