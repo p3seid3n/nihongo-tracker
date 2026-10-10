@@ -1,5 +1,5 @@
 // Sentence practice: mixed exercises from your own vocabulary sentences, glosses, tap-a-word popup.
-import { launch, shot, BASE } from "./lib.mjs";
+import { launch, shot, BASE, solveMatch } from "./lib.mjs";
 const FILE = process.env.APKG || "/mnt/user-data/uploads/All_decks-20261004095235.apkg";
 const ok = (c, m) => { console.log(c ? "ok:" : "FAIL:", m); if (!c) process.exitCode = 1; };
 const { browser, page, errors } = await launch();
@@ -53,14 +53,7 @@ for (let i = 0; i < 60; i++) {
   await page.waitForTimeout(650);
   await shot(page, `71-ex-${steps}`);
   if (await page.locator(".match").count()) {
-    const lefts = await page.locator(".match > div:first-child button").count();
-    for (let l = 0; l < lefts; l++) {
-      const lb = page.locator(".match > div:first-child button:not(.gone)").first();
-      await lb.click();
-      const rights = page.locator(".match > div:last-child button:not(.gone)");
-      const rc = await rights.count();
-      for (let r = 0; r < rc; r++) { await rights.nth(r).click(); if ((await page.locator(".match > div:first-child button:not(.gone)").count()) < lefts - l) break; await lb.click(); }
-    }
+    await solveMatch(page);
     continue;
   }
   if (await page.locator(".opt").count()) { await page.locator(".opt").first().click(); await page.locator(".sticky-actions button").click(); continue; }

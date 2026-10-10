@@ -160,3 +160,17 @@ button.chip[aria-pressed="true"] { transform: scale(1.04); }
 .welcome > :not(.steps-dots):not(.onb-nav) { animation: rise-in var(--sp-slow-spatial-d) var(--sp-slow-spatial) backwards, enter-o var(--sp-slow-effects-d) var(--sp-slow-effects) backwards; animation-delay: calc(var(--n, 0) * 45ms); }
 .welcome > :nth-child(3) { --n: 1; } .welcome > :nth-child(4) { --n: 2; } .welcome > :nth-child(5) { --n: 3; } .welcome > :nth-child(n+6) { --n: 4; }
 .node.available .node-dot { animation: pop-in var(--sp-spatial-d) var(--sp-spatial) 120ms backwards; }
+
+/* ---------- leaving: things go out the way they came in ---------- */
+.overlay-wrap.out { pointer-events: none; }
+@keyframes scrim-out { to { opacity: 0; } }
+@keyframes sheet-out { to { transform: translateY(100%); } }
+.scrim-ghost { position: fixed; inset: 0; z-index: 61; background: rgb(0 0 0 / 0.55); display: flex; align-items: flex-end; justify-content: center; pointer-events: none; animation: scrim-out 200ms ease-in forwards; }
+.sheet-ghost { width: 100%; max-width: 560px; max-height: 88dvh; overflow: hidden; background: var(--s2); border-radius: 28px 28px 0 0; padding: 12px 20px calc(72px + env(safe-area-inset-bottom, 0px)); margin-bottom: -48px; animation: sheet-out 220ms cubic-bezier(0.3, 0, 0.8, 0.15) forwards; }
+@media (min-width: 700px) { .scrim-ghost { align-items: center; } .sheet-ghost { border-radius: 28px; margin-bottom: 0; padding-bottom: 24px; } }
+
+/* lesson pages slide sideways: forward from the right, back from the left */
+@keyframes slide-from-r { from { transform: translateX(36px); opacity: 0; } }
+@keyframes slide-from-l { from { transform: translateX(-36px); opacity: 0; } }
+.lesson-body[data-dir="fwd"] > * { animation: slide-from-r var(--sp-spatial-d) var(--sp-spatial) backwards, enter-o var(--sp-effects-d) var(--sp-effects) backwards; animation-delay: calc(var(--n, 0) * 30ms); }
+.lesson-body[data-dir="back"] > * { animation: slide-from-l var(--sp-spatial-d) var(--sp-spatial) backwards, enter-o var(--sp-effects-d) var(--sp-effects) backwards; animation-delay: calc(var(--n, 0) * 30ms); }

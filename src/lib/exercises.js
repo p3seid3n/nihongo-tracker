@@ -25,7 +25,7 @@ function translateChoice(lessonId, s, others, rng, extra = []) {
   if (wrongs.length < 2) return null;
   return {
     id: nid(), kind: "choose", lessonId, instruction: "What does this mean?",
-    prompt: { jp }, options: optionsFrom(en, wrongs, rng), explain: note || "",
+    prompt: { jp }, options: optionsFrom(en, wrongs, rng), explain: note || "", recap: { jp, en },
   };
 }
 
@@ -39,7 +39,7 @@ function buildFrom(lessonId, jp, en, distractors, rng, note) {
   if (sh.length > 2 && sh.map((b) => b.text).join("") === toks.map((t) => t.text).join("")) sh = shuffle(rng, sh).reverse();
   return {
     id: nid(), kind: "build", lessonId, instruction: "Build the sentence",
-    prompt: { en }, bank: sh, answer: toks.map((t) => t.text), explain: note || "",
+    prompt: { en }, bank: sh, answer: toks.map((t) => t.text), explain: note || "", recap: { jp, en },
   };
 }
 
@@ -54,6 +54,7 @@ function clozeFrom(lessonId, c, pool, rng) {
   return {
     id: nid(), kind: "choose", lessonId, instruction: "Fill in the blank",
     prompt: { jp, en, blank: bi }, options: optionsFrom(correct, wrongs, rng), explain: why || "",
+    recap: { jp: toks.map((t) => t.m).join("|"), en },
   };
 }
 
@@ -76,7 +77,7 @@ function spotFrom(lessonId, s, rng) {
   if (!bad.length) return null;
   return {
     id: nid(), kind: "choose", lessonId, instruction: "Which sentence is correct?",
-    prompt: {}, options: optionsFrom(good, bad, rng).map((o) => ({ ...o, jp: o.text })), explain: why,
+    prompt: {}, options: optionsFrom(good, bad, rng).map((o) => ({ ...o, jp: o.text })), explain: why, recap: { jp: good },
   };
 }
 

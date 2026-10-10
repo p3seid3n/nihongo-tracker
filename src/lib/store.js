@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS = {
   haptics: true,
   autoplay: true, // legacy switch. audioWord (front | reveal | off) and audioSentence (reveal | off) take over once chosen in Settings
   kanjiFont: "mincho",
+  explain: "kotoba",
   speechRate: 1,
   voiceURI: "",
   motion: "full",

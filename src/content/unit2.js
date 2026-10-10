@@ -20,12 +20,12 @@ export const unit2 = [
         h: "Four polite endings",
         p: ["ます makes four forms: **ます** (do), **ません** (don't), **ました** (did), **ませんでした** (didn't). Nouns and adjectives use **です** instead; i-adjectives keep their own conjugation and just add です."],
         table: {
-          head: ["", "Verb 食べる", "Noun 学生", "I-adjective 高い"],
+          head: ["", "Verb 食[た]べる", "Noun 学生[がくせい]", "I-adjective 高[たか]い"],
           rows: [
-            ["now", "食べます", "学生です", "高いです"],
-            ["not", "食べません", "学生じゃありません", "高くないです"],
-            ["past", "食べました", "学生でした", "高かったです"],
-            ["past not", "食べませんでした", "学生じゃありませんでした", "高くなかったです"],
+            ["now", "食[た]べます", "学生[がくせい]です", "高[たか]いです"],
+            ["not", "食[た]べません", "学生[がくせい]​じゃ​ありません", "高[たか]くないです"],
+            ["past", "食[た]べました", "学生[がくせい]でした", "高[たか]かったです"],
+            ["past not", "食[た]べません​でした", "学生[がくせい]​じゃ​ありません​でした", "高[たか]くなかったです"],
           ],
         },
         ex: [
@@ -75,7 +75,7 @@ export const unit2 = [
         ],
         table: {
           head: ["", "My own", "Someone else's"],
-          rows: [["mother", "母 (はは)", "お母さん"], ["father", "父 (ちち)", "お父さん"], ["older sister", "姉 (あね)", "お姉さん"], ["older brother", "兄 (あに)", "お兄さん"]],
+          rows: [["mother", "母 (はは)", "お母[かあ]さん"], ["father", "父 (ちち)", "お父[とう]さん"], ["older sister", "姉 (あね)", "お姉[ねえ]さん"], ["older brother", "兄 (あに)", "お兄[にい]さん"]],
         },
         ex: [
           ["母[はは]|は|医者[いしゃ]|です", "My mother is a doctor."],
@@ -143,7 +143,7 @@ export const unit2 = [
         p: ["Same pattern as the past tense, but ending in て/で instead of た/だ. Ru-verbs: drop る, add て. U-verbs follow the ending table. Irregular: する → して, 来る → 来て (きて), 行く → 行って."],
         table: {
           head: ["Ending", "Becomes", "Example"],
-          rows: [["う・つ・る", "って", "買う → 買って"], ["む・ぶ・ぬ", "んで", "飲む → 飲んで"], ["く", "いて", "書く → 書いて"], ["ぐ", "いで", "泳ぐ → 泳いで"], ["す", "して", "話す → 話して"]],
+          rows: [["う・つ・る", "って", "買[か]う → 買[か]って"], ["む・ぶ・ぬ", "んで", "飲[の]む → 飲[の]んで"], ["く", "いて", "書[か]く → 書[か]いて"], ["ぐ", "いで", "泳[およ]ぐ → 泳[およ]いで"], ["す", "して", "話[はな]す → 話[はな]して"]],
         },
         ex: [
           ["友達[ともだち]|に|会[あ]って|話[はな]した", "I met a friend and we talked."],

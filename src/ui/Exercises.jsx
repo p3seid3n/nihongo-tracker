@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
 import { TokLine } from "./WordTap.jsx";
+import { SpeakBtn } from "./Voice.jsx";
+import { useApp } from "./common.jsx";
+import { audioPlan, say, markupPart } from "../lib/audio.js";
 import { checkBuild } from "../lib/exercises.js";
 import { plainOf } from "../lib/jp.js";
 import * as hap from "../lib/haptics.js";
@@ -10,6 +13,37 @@ import * as hap from "../lib/haptics.js";
 export function Rich({ text }) {
   const parts = String(text).split(/\*\*(.+?)\*\*/g);
   return <>{parts.map((p, i) => (i % 2 ? <strong key={i}><Furi m={p} /></strong> : <Furi key={i} m={p} />))}</>;
+}
+
+/** The part to read aloud for a finished sentence (native clip when the card has one). */
+const recapPart = (r) => (r ? r.part || (r.jp ? markupPart(r.jp) : r.text ? { file: "", text: r.text } : null) : null);
+
+/** Reads the sentence once an exercise has been answered, if "example sentence audio" isn't off. */
+function useRecapAudio(verdict, recap) {
+  const { store } = useApp();
+  useEffect(() => {
+    if (!verdict) return;
+    const part = recapPart(recap);
+    if (part && audioPlan(store.settings).sentence !== "off") say(part);
+  }, [!!verdict]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/** After an answer: the whole sentence, word by word, its translation and a speaker. Fills the empty space with something to learn from. */
+function Recap({ r }) {
+  const part = recapPart(r);
+  const ref = useRef(null);
+  useEffect(() => {
+    const t = setTimeout(() => ref.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }), 260);
+    return () => clearTimeout(t);
+  }, []);
+  if (!r || (!r.toks && !r.jp)) return null;
+  return (
+    <div className="recap" ref={ref}>
+      <div className="recap-h"><span>The full sentence</span><SpeakBtn part={part} size={22} /></div>
+      {r.toks ? <TokLine toks={r.toks} all /> : <Sentence jp={r.jp} />}
+      {r.en && <span className="en">{r.en}</span>}
+    </div>
+  );
 }
 
 function Footer({ canCheck, onCheck, verdict, onContinue, checkLabel = "Check" }) {
@@ -53,8 +87,11 @@ function Choose({ ex, onDone }) {
   };
   const hasBlank = p.blank != null && p.jp;
   const selText = ex.options.find((o) => o.id === sel)?.text;
+  useRecapAudio(verdict, ex.recap);
+  const promptPart = !hasBlank && p.blank == null ? (p.toks ? ex.recap?.part || null : p.jp ? markupPart(p.jp) : null) : null;
   return (
     <>
+      <div className="lesson-body">
       <div className="q-instr">{ex.instruction}</div>
       {(p.word || p.jp || p.text || p.toks) && (
         <div className="q-prompt">
@@ -62,6 +99,7 @@ function Choose({ ex, onDone }) {
           {p.word && <><span className="word" lang="ja"><Furi m={p.word} /></span>{p.wordEn && <span className="dim">{p.wordEn}</span>}</>}
           {hasBlank && <><Sentence jp={p.jp} blank={p.blank} fill={verdict || sel ? ex.options.find((o) => o.id === sel)?.text : null} filled={!!sel} />{p.en && <span className="dim">{p.en}</span>}</>}
           {!hasBlank && p.jp && <Sentence jp={p.jp} />}
+          {promptPart && <SpeakBtn part={promptPart} className="prompt-say" />}
           {p.text && <span className="big"><Furi m={p.text} mode={p.noFuri ? "never" : undefined} /></span>}
         </div>
       )}
@@ -80,6 +118,8 @@ function Choose({ ex, onDone }) {
             </button>
           );
         })}
+      </div>
+      {verdict && <Recap r={ex.recap} />}
       </div>
       <Footer canCheck={!!sel} onCheck={check} verdict={verdict} onContinue={() => onDone(verdict.correct)} />
     </>
@@ -106,10 +146,12 @@ function Build({ ex, onDone }) {
     ok ? hap.good() : hap.bad();
     setVerdict({ correct: ok, answer: ex.answer.join(""), explain: ex.explain });
   };
+  useRecapAudio(verdict, ex.recap);
   const add = (id) => { if (!verdict && !picked.includes(id)) { setPicked([...picked, id]); hap.tap(); } };
   const remove = (id) => { if (!verdict) setPicked(picked.filter((x) => x !== id)); };
   return (
     <>
+      <div className="lesson-body">
       <div className="q-instr">{ex.instruction}</div>
       <div className="q-prompt"><span className="big">{ex.prompt.en}</span></div>
       <div className="tile-zone answer-zone" aria-label="Your sentence">
@@ -118,32 +160,52 @@ function Build({ ex, onDone }) {
       <div className="tile-zone" aria-label="Word bank" style={{ borderStyle: "none", background: "transparent", padding: 0 }}>
         {ex.bank.map((b) => <Tile key={b.id} b={b} used={picked.includes(b.id)} disabled={picked.includes(b.id) || !!verdict} onClick={() => add(b.id)} />)}
       </div>
+      {verdict && <Recap r={ex.recap} />}
+      </div>
       <Footer canCheck={picked.length > 0} onCheck={check} verdict={verdict} onContinue={() => onDone(verdict.correct)} />
     </>
   );
 }
 
 function Match({ ex, onDone }) {
+  const { store } = useApp();
+  const hear = (id) => {
+    if (audioPlan(store.settings).word === "off") return;
+    const item = ex.left.find((p) => p.id === id);
+    const part = item ? markupPart(item.jp) : null;
+    if (part) say(part);
+  };
   const [gone, setGone] = useState({});
-  const [left, setLeft] = useState(null);
+  const [sel, setSel] = useState(null); // { side: "l" | "r", id } - start from either column
   const [wrong, setWrong] = useState(null);
   const [mistakes, setMistakes] = useState(0);
   const finished = Object.keys(gone).length === ex.pairs.length;
-  const tapLeft = (id) => { if (!gone[id]) { setLeft(id); hap.tap(); } };
-  const tapRight = (id) => {
-    if (gone[id] || !left) return;
-    if (left === id) { setGone((g) => ({ ...g, [id]: true })); setLeft(null); hap.good(); }
-    else { setWrong(id); setMistakes((m) => m + 1); hap.bad(); setTimeout(() => setWrong(null), 350); }
+  const pick = (side, id) => {
+    if (gone[id]) return;
+    if (!sel || sel.side === side) {
+      // first tap, or changing your mind within the same column
+      setSel(sel && sel.side === side && sel.id === id ? null : { side, id });
+      hap.tap();
+      if (side === "l") hear(id);
+      return;
+    }
+    if (sel.id === id) { setGone((g) => ({ ...g, [id]: true })); setSel(null); hap.good(); hear(id); return; }
+    const key = side + id;
+    setWrong(key); setMistakes((m) => m + 1); hap.bad();
+    setTimeout(() => setWrong((w) => (w === key ? null : w)), 350);
   };
+  const on = (side, id) => !!sel && sel.side === side && sel.id === id;
   return (
     <>
-      <div className="q-instr">{ex.instruction}</div>
-      <div className="match">
-        <div className="stack">
-          {ex.left.map((p) => <button key={p.id} className={gone[p.id] ? "gone" : ""} aria-pressed={left === p.id} disabled={!!gone[p.id]} onClick={() => tapLeft(p.id)}><span className="jp-line" lang="ja" style={{ fontSize: "1.2rem" }}><Furi m={p.jp} /></span></button>)}
-        </div>
-        <div className="stack">
-          {ex.right.map((p) => <button key={p.id} className={`${gone[p.id] ? "gone" : ""} ${wrong === p.id ? "shake" : ""}`} disabled={!!gone[p.id]} onClick={() => tapRight(p.id)}>{p.en}</button>)}
+      <div className="lesson-body">
+        <div className="q-instr">{ex.instruction}</div>
+        <div className="match">
+          <div className="stack">
+            {ex.left.map((p) => <button key={p.id} className={`${gone[p.id] ? "gone" : ""} ${wrong === "l" + p.id ? "shake" : ""}`} aria-pressed={on("l", p.id)} disabled={!!gone[p.id]} onClick={() => pick("l", p.id)}><span className="jp-line" lang="ja" style={{ fontSize: "1.2rem" }}><Furi m={p.jp} /></span></button>)}
+          </div>
+          <div className="stack">
+            {ex.right.map((p) => <button key={p.id} className={`${gone[p.id] ? "gone" : ""} ${wrong === "r" + p.id ? "shake" : ""}`} aria-pressed={on("r", p.id)} disabled={!!gone[p.id]} onClick={() => pick("r", p.id)}>{p.en}</button>)}
+          </div>
         </div>
       </div>
       {finished && <Footer verdict={{ correct: mistakes === 0, explain: mistakes ? `${mistakes} slip${mistakes === 1 ? "" : "s"}. Matching still helps you remember.` : "" }} onContinue={() => onDone(mistakes === 0)} />}
@@ -194,7 +256,7 @@ export function ExerciseRunner({ exercises, onFinish, onClose, title }) {
         <div className="study-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${pct}%` }} /></div>
         {title && <span className="chip">{title}</span>}
       </div>
-      <div className="lesson-body" key={ex.id + ":" + i}>
+      <div className="ex-frame" key={ex.id + ":" + i}>
         <Cmp ex={ex} onDone={done} />
       </div>
     </>

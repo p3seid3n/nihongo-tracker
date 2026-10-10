@@ -77,3 +77,49 @@ describe("lesson content lint", () => {
     expect(ex.length).toBe(6);
   });
 });
+
+import { EXTRA_TABLES } from "../src/content/tables.js";
+import { taeKimUrl } from "../src/content/lessons.js";
+
+describe("lesson tables", () => {
+  const byId = Object.fromEntries(LESSONS.map((l) => [l.id, l]));
+  it("every reference table is attached to a real lesson page", () => {
+    for (const [id, pages] of Object.entries(EXTRA_TABLES)) {
+      expect(byId[id], `lesson ${id}`).toBeTruthy();
+      const heads = byId[id].pages.map((p) => p.h);
+      for (const h of Object.keys(pages)) expect(heads, `${id}: page “${h}”`).toContain(h);
+    }
+  });
+  it("tables are rectangular and every kanji in a cell has a reading", () => {
+    for (const l of LESSONS) {
+      for (const p of l.pages) {
+        for (const t of p.tables || []) {
+          expect(t.head.length, `${l.id} / ${p.h} / ${t.cap}`).toBeGreaterThan(1);
+          for (const r of t.rows) {
+            expect(r.length, `${l.id} / ${t.cap}: ${r[0]}`).toBe(t.head.length);
+            for (const cell of r) {
+              if (t.head.includes("Reading")) continue; // the reading is its own column
+              const line = String(cell).replace(/\*\*/g, "").split("\n")[0];
+              if (/[A-Za-z]{3}/.test(line) || /[(（][ぁ-んァ-ン\/]+[)）]/.test(line)) continue; // English labels, or a reading given in brackets
+              expect(missingReading(line), `${l.id} / ${t.cap}: ${cell}`).toEqual([]);
+            }
+          }
+          if (t.hl != null) expect(t.hl).toBeLessThan(t.head.length);
+        }
+      }
+    }
+  });
+  it("most pages with a lot of explaining carry a table", () => {
+    const withTables = LESSONS.filter((l) => l.pages.some((p) => (p.tables || []).length)).length;
+    expect(withTables).toBeGreaterThanOrEqual(38);
+  });
+});
+
+describe("Tae Kim links", () => {
+  it("every lesson links to its own section of the guide", () => {
+    for (const l of LESSONS) {
+      const u = taeKimUrl(l.id);
+      expect(u, l.id).toMatch(/^https:\/\/guidetojapanese\.org\/learn\/grammar\/[a-z0-9_-]+$/);
+    }
+  });
+});

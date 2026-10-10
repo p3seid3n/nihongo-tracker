@@ -9,7 +9,7 @@ import { loadVoices, pickVoice, say, getAudioInfo, clearAudio, ttsSupported, aud
 import { KANJI_FONTS, ensureFont } from "../lib/fonts.js";
 import { recognitionSupported, recordingSupported } from "../lib/pronounce.js";
 
-export const APP_VERSION = "4.2.0";
+export const APP_VERSION = "4.3.0";
 
 function Row({ title, sub, children }) {
   return (

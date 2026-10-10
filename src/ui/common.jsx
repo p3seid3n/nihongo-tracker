@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "./icons.jsx";
 import { springAnimate } from "../lib/motion.js";
 import * as hap from "../lib/haptics.js";
@@ -123,6 +123,7 @@ function useSheetDrag(onClose) {
     const scrim = el.parentElement;
     if (dismiss) {
       hap.snap();
+      el.dataset.gone = "1"; // already animated away by the finger: no extra exit animation
       if (scrim) { scrim.style.transition = "background 0.2s"; scrim.style.background = "rgb(0 0 0 / 0)"; }
       springAnimate(el, { from: s.dy, to: s.h + 60, velocity: Math.max(0, s.v), stiffness: 420, damping: 1, build: (v) => `translateY(${v}px)` }).then(onClose);
     } else {
@@ -135,7 +136,30 @@ function useSheetDrag(onClose) {
 }
 
 /** Bottom sheet. Closes on scrim tap, Escape and drag-down. */
+/** When a sheet is removed by its parent, leave a short-lived copy behind that slides away and fades. */
+function useSheetExit(scrimRef) {
+  useLayoutEffect(() => () => {
+    const el = scrimRef.current;
+    if (!el || typeof document === "undefined") return;
+    const sheet = el.querySelector(".sheet");
+    if (!sheet || sheet.dataset.gone) return;
+    const root = document.documentElement;
+    if (root.dataset.motion === "reduced" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const copy = el.cloneNode(true);
+    copy.className = "scrim-ghost";
+    copy.setAttribute("aria-hidden", "true");
+    copy.setAttribute("inert", "");
+    const cs = copy.querySelector(".sheet");
+    if (cs) cs.className = "sheet-ghost";
+    copy.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    document.body.appendChild(copy);
+    setTimeout(() => copy.remove(), 230);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 export function Sheet({ title, onClose, children, actions }) {
+  const scrimRef = useRef(null);
+  useSheetExit(scrimRef);
   useEffect(() => lockScroll(), []);
   useEffect(() => {
     const k = (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } }; // the view underneath must not also react
@@ -144,7 +168,7 @@ export function Sheet({ title, onClose, children, actions }) {
   }, [onClose]);
   const { sheet, handlers } = useSheetDrag(onClose);
   return (
-    <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="scrim" ref={scrimRef} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title} ref={sheet}>
         <div className="sheet-head" {...handlers}>
           <div className="sheet-grab" />

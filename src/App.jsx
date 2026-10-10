@@ -85,9 +85,9 @@ export default function App() {
   const [pulling, setPulling] = useState(false);
   const [confirmState, setConfirmState] = useState(null);
   const [known, setKnown] = useState(() => new Set());
-  const [ghost, setGhost] = useState(null); // overlay that is animating out
+  const [leaving, setLeaving] = useState(null); // overlay that is animating out (stays mounted, so it exits as you saw it)
+  const leaveTimer = useRef(0);
   const overlayRef = useRef(null);
-  const prevOverlay = useRef(null);
   const keyRef = useRef(0);
   const { items: toastItems, toast, dismiss } = useToasts();
 
@@ -116,14 +116,25 @@ export default function App() {
   }, [store, sessionRef]);
 
   // ---- history-backed overlays
+  // Closing keeps the same overlay mounted with an exit animation, instead of rebuilding it for the animation.
+  const dismissOverlay = useCallback(() => {
+    const cur = overlayRef.current;
+    overlayRef.current = null;
+    setOverlay(null);
+    if (!cur) return;
+    setLeaving(cur);
+    clearTimeout(leaveTimer.current);
+    leaveTimer.current = setTimeout(() => setLeaving((l) => (l === cur ? null : l)), 200);
+  }, []);
   useEffect(() => {
     if (window.history.state && window.history.state.nt) window.history.replaceState(null, "");
-    const onPop = () => { overlayRef.current = null; setOverlay(null); };
+    const onPop = () => dismissOverlay();
     window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
+    return () => { window.removeEventListener("popstate", onPop); clearTimeout(leaveTimer.current); };
+  }, [dismissOverlay]);
   const open = useCallback((o) => {
     const had = !!overlayRef.current;
+    clearTimeout(leaveTimer.current); setLeaving(null);
     overlayRef.current = { ...o, key: ++keyRef.current };
     if (!had) window.history.pushState({ nt: 1 }, "");
     setOverlay(overlayRef.current);
@@ -131,20 +142,11 @@ export default function App() {
   const close = useCallback(() => {
     if (!overlayRef.current) return;
     if (window.history.state && window.history.state.nt) window.history.back();
-    else { overlayRef.current = null; setOverlay(null); }
-  }, []);
+    else dismissOverlay();
+  }, [dismissOverlay]);
   const go = useCallback((t) => { setTab(t); window.scrollTo(0, 0); }, []);
   useEffect(() => {
     document.body.style.overflow = overlay ? "hidden" : "";
-  }, [overlay]);
-  // keep the closed overlay on screen for its exit animation
-  useEffect(() => {
-    const prev = prevOverlay.current;
-    prevOverlay.current = overlay;
-    if (overlay || !prev) { setGhost(null); return undefined; }
-    setGhost(prev);
-    const t = setTimeout(() => setGhost(null), 180);
-    return () => clearTimeout(t);
   }, [overlay]);
 
   // ---- auth
@@ -271,7 +273,7 @@ export default function App() {
   }), [store, sync, session, known, open, close, go, toast, confirm]);
 
   // the page behind a full-screen view never scrolls
-  useEffect(() => (overlay || ghost ? lockScroll() : undefined), [!!(overlay || ghost)]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => (overlay || leaving ? lockScroll() : undefined), [!!(overlay || leaving)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- render
   if (phase === "loading") return <Splash />;
@@ -317,9 +319,9 @@ export default function App() {
   return (
     <AppCtx.Provider value={ctx}>
       {body}
-      {(overlay || ghost) && !recovery && (
-        <div className={`overlay-wrap ${overlay ? "" : "out"}`} key={(overlay || ghost).key}>
-          <OverlayView o={overlay || ghost} close={close} open={open} />
+      {(overlay || leaving) && !recovery && (
+        <div className={`overlay-wrap ${overlay ? "" : "out"}`} key={(overlay || leaving).key} inert={overlay ? undefined : ""}>
+          <OverlayView o={overlay || leaving} close={close} open={open} />
         </div>
       )}
       {ownerPrompt && <OwnerSheet prompt={ownerPrompt} onChoose={resolveOwner} email={session?.user?.email} />}

@@ -465,3 +465,46 @@ table.t td:first-child { font-family: var(--font); color: var(--dim); }
 .wpop-note { color: var(--dim); font-size: 0.85rem; line-height: 1.4; white-space: pre-line; }
 @keyframes wpop-in { from { opacity: 0; transform: scale(0.92); } }
 .tk-grp { display: inline-flex; align-items: flex-end; white-space: nowrap; }
+
+/* ---------- lesson frame: the content scrolls, the buttons stay below it ---------- */
+.ex-frame { flex: 1; min-height: 0; width: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; }
+.ex-frame > .lesson-body { max-width: none; margin: 0; }
+.lesson-foot, .ex-frame > .sticky-actions { flex: none; width: 100%; max-width: 640px; margin: 0 auto; position: static; background: none; padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.ex-frame > .feedback { position: static; flex: none; margin: 0; }
+/* Japanese inside English text stays whole: no line break between です's two letters */
+.prose, .note, .why, .hint, .ex-card .en, .q-instr { word-break: keep-all; overflow-wrap: anywhere; }
+
+/* ---------- lesson tables ---------- */
+.tbl { margin: 0; background: var(--s2); border-radius: 22px; overflow: hidden; text-align: left; position: relative; }
+.tbl[data-more]::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 30px; background: linear-gradient(to left, var(--s2) 10%, transparent); pointer-events: none; }
+.tbl figcaption { padding: 14px 16px 8px; font-weight: 650; font-size: 0.9rem; color: var(--text); }
+.tbl-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.tbl table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.95rem; }
+.tbl th, .tbl td { padding: 9px 10px; vertical-align: top; text-align: left; line-height: 1.45; border-top: 1px solid var(--line-soft); }
+.tbl thead th { background: var(--s3); color: var(--dim); font-size: 0.78rem; font-weight: 650; letter-spacing: 0.02em; border-top: 0; white-space: nowrap; }
+.tbl tbody th[scope="row"] { font-weight: 600; color: var(--dim); font-size: 0.82rem; white-space: nowrap; background: color-mix(in srgb, var(--s3) 45%, transparent); }
+.tbl tbody tr:first-child th, .tbl tbody tr:first-child td { border-top: 0; }
+.tbl td.jp .l1, .tbl td .l1[lang="ja"] { font-family: var(--font-jp); font-size: 1rem; }
+.tbl td .l2, .tbl th .l2 { display: block; font-size: 0.8rem; color: var(--dim); font-weight: 400; margin-top: 2px; white-space: normal; }
+.tbl .hl { background: var(--primary-c); }
+.tbl thead th.hl { color: var(--primary); }
+.tbl strong { color: var(--primary); font-weight: 700; }
+.tbl-note { margin: 0; padding: 10px 18px 14px; font-size: 0.85rem; color: var(--dim); border-top: 1px solid var(--line-soft); line-height: 1.5; }
+.tbl-note strong { color: var(--primary); }
+.tbl .l1 { word-break: keep-all; overflow-wrap: normal; }
+
+/* ---------- explanation source toggle ---------- */
+.src-toggle { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--s2); align-self: flex-start; position: relative; }
+.src-toggle button { min-height: 36px; padding: 0 16px; border-radius: 999px; font-weight: 600; font-size: 0.9rem; color: var(--dim); background: none; }
+.src-toggle button.on { background: var(--primary-c); color: var(--primary); }
+.plain-list { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; color: var(--dim); }
+a.btn { text-decoration: none; }
+
+/* ---------- recap after an answer ---------- */
+.recap { background: var(--s2); border-radius: 22px; padding: 12px 18px 16px; display: flex; flex-direction: column; gap: 6px; text-align: left; animation: rise-in var(--sp-spatial-d) var(--sp-spatial) backwards, enter-o var(--sp-effects-d) var(--sp-effects) backwards; }
+.recap-h { display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; font-weight: 650; color: var(--dim); min-height: 40px; }
+.recap .en { color: var(--dim); font-size: 0.95rem; line-height: 1.45; }
+.recap .tk-line, .recap .jp-line { font-size: 1.3rem; }
+.q-prompt .prompt-say { align-self: flex-start; width: 40px; height: 40px; margin-top: 2px; }
+.lesson-body:has(.recap) { padding-bottom: 28px; }
+.lesson-body > * { flex-shrink: 0; } /* a scrolling column never squeezes its children */

@@ -4,6 +4,7 @@
 import { conjugate, segsToMarkup, KANJI_RE, FORMS } from "./jp.js";
 import { currentRetrievability, REVIEW, NEW } from "./fsrs.js";
 import { shuffle } from "../content/generators.js";
+import { sentencePart } from "./audio.js";
 import { buildLexicon, analyzeSentence, fit, tokenInfo, shortGloss, wordShape } from "./lexicon.js";
 
 let counter = 0;
@@ -306,6 +307,7 @@ export function buildSentenceSession(store, rng, { n = 10, now = Date.now() } = 
       if (!ex) continue;
       u.n++; u.kinds.add(kind); used.set(S.id, u);
       cursor = (cursor + tries + 1) % usable.length;
+      ex.recap = { toks: S.toks, en: S.en, part: sentencePart(S.card) };
       out.push(ex);
       break;
     }

@@ -3,7 +3,8 @@ import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
 import { Rich, ExerciseRunner } from "./Exercises.jsx";
 import { useApp, useNow, PageHead, plural, Sheet, Burst } from "./common.jsx";
-import { UNITS, LESSONS, LESSON_BY_ID, SOURCE } from "../content/lessons.js";
+import { UNITS, LESSONS, LESSON_BY_ID, SOURCE, taeKimUrl } from "../content/lessons.js";
+import { LessonTable } from "./LessonTable.jsx";
 import { buildLessonExercises, buildReviewExercises, lessonExamples } from "../lib/exercises.js";
 import { buildSentenceSession } from "../lib/sentenceEx.js";
 import { mulberry32, shuffle } from "../content/generators.js";
@@ -115,6 +116,7 @@ export function LessonPlayer({ id, onClose, onOpen }) {
   const lesson = LESSON_BY_ID[id];
   const [stage, setStage] = useState("learn");
   const [page, setPage] = useState(0);
+  const [dir, setDir] = useState("fwd");
   const [exs, setExs] = useState(null);
   const [err, setErr] = useState("");
   const [result, setResult] = useState(null);
@@ -164,7 +166,7 @@ export function LessonPlayer({ id, onClose, onOpen }) {
           <div className="stack" style={{ width: "100%", marginTop: "auto" }}>
             {result.passed && nextL && <button className="btn btn-primary btn-lg btn-block" onClick={() => onOpen({ type: "lesson", id: nextL.id })}>Next: {nextL.title}</button>}
             <button className={`btn btn-block ${result.passed && nextL ? "btn-soft" : "btn-primary btn-lg"}`} onClick={startPractice}>Practice again</button>
-            {!result.passed && <button className="btn btn-soft btn-block" onClick={() => { setStage("learn"); setPage(0); }}>Read the lesson again</button>}
+            {!result.passed && <button className="btn btn-soft btn-block" onClick={() => { setStage("learn"); setPage(0); setDir("back"); }}>Read the lesson again</button>}
             <button className="btn btn-ghost btn-block" onClick={onClose}>Done</button>
           </div>
         </div>
@@ -173,25 +175,33 @@ export function LessonPlayer({ id, onClose, onOpen }) {
   }
 
   const pages = lesson.pages || [];
+  const source = store.settings.explain === "taekim" ? "taekim" : "kotoba";
   const p = pages[page];
   const last = page >= pages.length - 1;
+  const goPage = (n) => { setDir(n > page ? "fwd" : "back"); setPage(n); };
+  const setSource = (v) => { if (v !== source) { store.updateSettings({ explain: v }); setDir("fwd"); setPage(0); hap.tap(); } };
   return (
     <Shell onClose={onClose}>
       <div className="lesson-top">
         <button className="icon-btn" onClick={onClose} aria-label="Close lesson"><Icon name="close" /></button>
-        <div className="grow"><div className="dots">{pages.map((_, i) => <i key={i} className={i === page ? "on" : i < page ? "past" : ""} />)}</div></div>
+        <div className="grow"><div className="dots">{(source === "taekim" ? [0] : pages).map((_, i) => <i key={i} className={i === page ? "on" : i < page ? "past" : ""} />)}</div></div>
         <button className="btn btn-ghost btn-sm" onClick={startPractice}>Skip to practice</button>
       </div>
-      <div className="lesson-body" key={page}>
+      <div className="lesson-body" key={`${source}:${page}`} data-dir={dir}>
         {page === 0 && (<div className="stack" style={{ gap: 4 }}><span className="chip chip-primary" style={{ alignSelf: "flex-start" }}>Tae Kim §{lesson.ref}</span><h1>{lesson.title}</h1><div className="dim jp" lang="ja" style={{ fontSize: "1.1rem" }}>{lesson.jp}</div></div>)}
-        {p && (
+        {page === 0 && (
+          <div className="src-toggle" role="tablist" aria-label="Explanation">
+            <button role="tab" aria-selected={source === "kotoba"} className={source === "kotoba" ? "on" : ""} onClick={() => setSource("kotoba")}>Kotoba</button>
+            <button role="tab" aria-selected={source === "taekim"} className={source === "taekim" ? "on" : ""} onClick={() => setSource("taekim")}>Tae Kim</button>
+          </div>
+        )}
+        {source === "taekim" ? (
+          <TaeKimPanel lesson={lesson} />
+        ) : p && (
           <>
             <h2>{p.h}</h2>
             <div className="prose">{(p.p || []).map((t, i) => <p key={i}><Rich text={t} /></p>)}</div>
-            {p.table && (
-              <div className="table-wrap"><table className="t"><thead><tr>{p.table.head.map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
-                <tbody>{p.table.rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}><Rich text={c} /></td>)}</tr>)}</tbody></table></div>
-            )}
+            {(p.tables || []).map((t, i) => <LessonTable key={i} t={t} />)}
             {(p.ex || []).map((e, i) => (
               <div className="ex-card" key={i}>
                 <Sentence jp={e[0]} />
@@ -202,14 +212,32 @@ export function LessonPlayer({ id, onClose, onOpen }) {
           </>
         )}
         {err && <p className="error-text">{err}</p>}
-        <div className="sticky-actions">
-          <div className="row">
-            {page > 0 && <button className="btn btn-soft" onClick={() => setPage(page - 1)}>Back</button>}
-            <button className="btn btn-primary btn-lg grow" onClick={() => (last ? startPractice() : setPage(page + 1))}>{last ? "Start practice" : "Continue"}</button>
-          </div>
+      </div>
+      <div className="lesson-foot">
+        <div className="row">
+          {page > 0 && source === "kotoba" && <button className="btn btn-soft" onClick={() => goPage(page - 1)}>Back</button>}
+          <button className="btn btn-primary btn-lg grow" onClick={() => (last || source === "taekim" ? startPractice() : goPage(page + 1))}>{last || source === "taekim" ? "Start practice" : "Continue"}</button>
         </div>
       </div>
     </Shell>
+  );
+}
+
+/** Tae Kim's own explanation lives on his site: we link to the exact section instead of copying his text. */
+function TaeKimPanel({ lesson }) {
+  const topics = (lesson.pages || []).map((pg) => pg.h);
+  return (
+    <>
+      <div className="prose">
+        <p>This lesson follows <strong>section {lesson.ref}</strong> of {SOURCE.name}. His explanation is on his website, so open it there and come back for the practice.</p>
+      </div>
+      <a className="btn btn-tonal btn-block" href={taeKimUrl(lesson.id)} target="_blank" rel="noreferrer noopener"><Icon name="book" /> Read it on guidetojapanese.org</a>
+      <div className="ex-card">
+        <b>Topics in this lesson</b>
+        <ul className="plain-list">{topics.map((h, i) => <li key={i}>{h}</li>)}</ul>
+      </div>
+      <p className="hint">Needs an internet connection. Tae Kim's text is licensed {SOURCE.license}. Switch back to “Kotoba” for the explanation written for this app, with tables and examples that match the practice.</p>
+    </>
   );
 }
 

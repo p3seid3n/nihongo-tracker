@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { createPortal } from "react-dom";
 import { Furi } from "./Furi.jsx";
 import { SpeakBtn } from "./Voice.jsx";
+import { shortGloss } from "../lib/lexicon.js";
 import * as hap from "../lib/haptics.js";
 
 /**
  * A sentence made of tokens (see lib/lexicon.js). Words you have not learned yet carry a short translation above them,
  * and tapping any word opens a small popup with its meaning, reading and a memory story.
  */
-export function TokLine({ toks, blank, fill, filled, glosses = true }) {
+export function TokLine({ toks, blank, fill, filled, glosses = true, all = false }) {
   const [pop, setPop] = useState(null); // { info, rect, i }
   const close = useCallback(() => setPop(null), []);
   const open = (e, t, i) => {
@@ -33,7 +34,7 @@ export function TokLine({ toks, blank, fill, filled, glosses = true }) {
         }
         if (t.type === "punct") return <span key={i} className="tk tk-p">{t.text}</span>;
         const tappable = !!t.info;
-        const gloss = glosses ? t.gloss : "";
+        const gloss = all ? (t.gloss || (t.info ? shortGloss(t.info.meaning, 16) : "")) : glosses ? t.gloss : "";
         const inner = (
           <>
             {gloss ? <span className="tk-g">{gloss}</span> : null}

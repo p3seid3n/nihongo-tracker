@@ -39,9 +39,10 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 
 * **Scheduler:** FSRS-6 with the default weights, learning steps 1 m / 10 m, relearning 10 m, day starts at 4 am, deterministic fuzz, target retention 85/90/95 % (Settings).
 * **Today:** reviews first, new cards woven in, then the next grammar lesson, a grammar refresher, and sentence practice built from your own vocabulary cards.
-* **Lessons:** 45 lessons in the order of Tae Kim's Guide (CC BY-NC-SA 3.0, personal non-commercial use with attribution). Explanations and example sentences are written for this app. Practice sentences are generated from a word bank and weighted towards words you are shaky on. Lessons are scheduled with FSRS too, so grammar comes back for review. Units can be tested out of.
+* **Lessons:** 45 lessons in the order of Tae Kim's Guide (CC BY-NC-SA 3.0, personal non-commercial use with attribution). Explanations and example sentences are written for this app. Practice sentences are generated from a word bank and weighted towards words you are shaky on. Lessons are scheduled with FSRS too, so grammar comes back for review. Units can be tested out of. Most pages carry a reference table (`src/content/tables.js`, plus the tables written into the lessons). The toggle under a lesson's title switches between the Kotoba explanation and Tae Kim's: his text is not copied into the app, the Tae Kim view links to the matching section on guidetojapanese.org (needs a connection) and lists what the lesson covers. Matching exercises work from either column, and after an answer the full sentence is shown with word glosses, a translation and audio.
 * **Kanji font:** Settings → Reading and look. Classic (the system's Mincho, default), Clear (Noto Sans JP) and Textbook (Klee One). The two extra fonts are SIL OFL, copied from the `@fontsource` packages into `public/fonts/` by `scripts/build-fonts.mjs` (runs on build), split into small slices and fetched the first time they are needed, then cached for offline use.
-* **Layout:** full-screen views (study, lessons, import) never scroll as a whole page; only their content area does, so the top bar and the answer buttons stay put, and the page behind sheets is locked.
+* **Layout:** full-screen views (study, lessons, import) never scroll as a whole page; only their content area does, so the top bar and the answer buttons stay put, and the page behind sheets is locked. Lesson and exercise buttons sit in their own footer below the scrolling content.
+* **Leaving:** closing a full-screen view animates the view you were on (it stays mounted until it has left); sheets slide away when removed by their parent; lesson pages slide from the right going forward and from the left going back.
 * **Furigana:** shown only for kanji you have not learned yet (kanji cards you graduated, plus kanji in well-known words). Change in Settings.
 * **Sync:** offline-first. Each part of your data (settings, decks, progress per deck, review log per month) is merged by timestamp, so two devices never overwrite each other's reviews. Signing in on a device that already has data asks whether to combine or replace.
 * **Motion:** follows Material 3 Expressive. Movement of things (cards, sheets, the nav pill, bars) uses springs that overshoot slightly; fades and colour use springs that settle without bounce. The spring curves are generated as CSS `linear()` easings (`npm run springs` regenerates `src/springs.css`). Sheets can be dragged down and settle with the speed of your finger. Settings → Animations → Reduced (or your device's reduce-motion setting) turns it down.
@@ -57,12 +58,12 @@ Cards tab → Import (or the button on Today). Pick the `.apkg`. Parsing happens
 ```
 npm install
 npm run dev        # local
-npm test           # unit tests (437)
+npm test           # unit tests (441)
 npm run build
 node scripts/make-icons.mjs   # regenerate icons
 node scripts/build-strokes.mjs # regenerate public/strokes from KanjiVG
 # browser tests (need Chromium; start `npx vite preview --port 4173` first)
-node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud, sentences, layout, settings-prefs
+node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud, sentences, layout, settings-prefs, lessons2
 ```
 
 Keyboard in a study session: Space = show answer / Good, 1–4 = grade, Z = undo.

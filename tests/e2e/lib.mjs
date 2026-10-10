@@ -24,3 +24,21 @@ export async function launch(opts = {}) {
   return { browser, ctx, page, errors };
 }
 export const shot = (page, name) => page.screenshot({ path: `${SHOTS}/${name}.png` });
+
+/** Solve a matching exercise by trying the English side one by one (a wrong tap keeps the selection). */
+export async function solveMatch(page) {
+  const total = await page.locator(".match > div:first-child button").count();
+  for (let k = 0; k < total; k++) {
+    const lefts = page.locator(".match > div:first-child button:not(.gone)");
+    const before = await lefts.count();
+    if (!before) break;
+    await lefts.first().click();
+    const rights = page.locator(".match > div:last-child button:not(.gone)");
+    const rc = await rights.count();
+    for (let r = 0; r < rc; r++) {
+      await rights.nth(r).click();
+      await page.waitForTimeout(40);
+      if ((await page.locator(".match > div:first-child button:not(.gone)").count()) < before) break;
+    }
+  }
+}
