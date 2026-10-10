@@ -2,7 +2,7 @@
 // Every top-level "slice" (settings, decks, lessons, prog:<deck>, content:<deck>, log:<month>)
 // is persisted under its own key and synced to the cloud under the same key.
 import { createStore as idbCreateStore, keys as idbKeys, getMany, setMany, delMany } from "idb-keyval";
-import { DEFAULT_CFG, review as fsrsReview, NEW, REVIEW } from "./fsrs.js";
+import { DEFAULT_CFG, DEFAULT_W, review as fsrsReview, NEW, REVIEW, validWeights, setActiveWeights } from "./fsrs.js";
 import { addDays, dayKey, monthKey, DAY } from "./time.js";
 import { mergeSlice, sliceKind } from "./merge.js";
 import { uuid, deckOf, baseId, isProd } from "./ids.js";
@@ -38,6 +38,8 @@ export const DEFAULT_SETTINGS = {
   effortBudget: 200, // daily effort points (a review costs 1, a recall review 3, see effort.js)
   autoThrottle: true, // fewer new cards while a backlog builds up or recall drops
   pretest: false, // guess before the first look at a new card
+  fsrsW: null, // personal FSRS weights fitted to your own reviews (null = the defaults)
+  fsrsFit: null, // what the last fit found: { at, n, before, after, better }
   u: 0,
 };
 
@@ -98,7 +100,7 @@ export class Store {
   // ---- reactivity
   subscribe = (fn) => { this.listeners.add(fn); return () => this.listeners.delete(fn); };
   getVersion = () => this.version;
-  emit() { this.version++; this.listeners.forEach((l) => { try { l(); } catch (e) { console.error(e); } }); }
+  emit() { setActiveWeights(this.weights()); this.version++; this.listeners.forEach((l) => { try { l(); } catch (e) { console.error(e); } }); }
 
   // ---- load / save
   async load() {
@@ -209,11 +211,13 @@ export class Store {
   }
 
   // ---- helpers
-  fsrsCfg() { return { ...DEFAULT_CFG, retention: this.settings.retention || 0.9 }; }
+  /** The weights in use: your fitted ones when valid, otherwise the defaults. */
+  weights() { return validWeights(this.settings.fsrsW) ? this.settings.fsrsW : DEFAULT_W; }
+  fsrsCfg() { return { ...DEFAULT_CFG, w: this.weights(), retention: this.settings.retention || 0.9 }; }
   /** Recall cards skip the learning steps: you already know the word, this only tests production. */
   prodCfg() { return { ...this.fsrsCfg(), learningSteps: [] }; }
   cfgFor(cardId) { return isProd(cardId) ? this.prodCfg() : this.fsrsCfg(); }
-  lessonCfg() { return { ...DEFAULT_CFG, retention: this.settings.retention || 0.9, learningSteps: [], relearningSteps: [], fuzz: false }; }
+  lessonCfg() { return { ...DEFAULT_CFG, w: this.weights(), retention: this.settings.retention || 0.9, learningSteps: [], relearningSteps: [], fuzz: false }; }
 
   deckList({ includeDeleted = false } = {}) {
     return Object.values(this.decks)

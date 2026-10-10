@@ -17,6 +17,22 @@ export const DEFAULT_W = [
   1.0178, 1.849, 0.1133, 0.3127, 2.2934, 0.2191, 3.0004, 0.7536, 0.3332, 0.1437, 0.1542,
 ];
 
+/** Allowed range of every weight (the same limits the FSRS trainers use). Anything outside is ignored. */
+export const W_BOUNDS = [
+  [0.001, 100], [0.001, 100], [0.001, 100], [0.001, 100],
+  [1, 10], [0.001, 4], [0.001, 4], [0.001, 0.75],
+  [0, 4.5], [0, 0.8], [0.001, 3.5], [0.001, 5],
+  [0.001, 0.25], [0.001, 0.9], [0, 4], [0, 1],
+  [1, 6], [0, 2], [0, 2], [0, 0.8], [0.1, 0.8],
+];
+export const validWeights = (w) =>
+  Array.isArray(w) && w.length === W_BOUNDS.length && w.every((x, i) => Number.isFinite(x) && x >= W_BOUNDS[i][0] && x <= W_BOUNDS[i][1]);
+
+// The weights the rest of the app (statistics, queue ordering) uses for "how likely do you still remember this".
+let ACTIVE_W = DEFAULT_W;
+export function setActiveWeights(w) { ACTIVE_W = validWeights(w) ? w : DEFAULT_W; }
+export const activeWeights = () => ACTIVE_W;
+
 export const DEFAULT_CFG = {
   w: DEFAULT_W,
   retention: 0.9,
@@ -33,7 +49,7 @@ const decay = (w) => -w[20];
 const factor = (w) => Math.pow(0.9, 1 / decay(w)) - 1;
 
 /** Probability of recall after `elapsedDays` for a card with stability `s`. */
-export function retrievability(elapsedDays, s, w = DEFAULT_W) {
+export function retrievability(elapsedDays, s, w = ACTIVE_W) {
   if (!(s > 0)) return 0;
   const t = Math.max(0, elapsedDays);
   return Math.pow(1 + (factor(w) * t) / s, decay(w));
@@ -247,7 +263,7 @@ export function previewDelays(card, now, cfg = DEFAULT_CFG, seedKey = "") {
 }
 
 /** Current recall probability for a stored card (0 for new cards). */
-export function currentRetrievability(card, now, w = DEFAULT_W) {
+export function currentRetrievability(card, now, w = ACTIVE_W) {
   if (!card || card.st === NEW || !card.s) return 0;
   return retrievability(Math.max(0, (now - card.last) / DAY), card.s, w);
 }

@@ -13,34 +13,51 @@ export function morae(kana) {
   return out;
 }
 
-const WRAP = /<span[^>]*display:\s*inline-block[^>]*>([\s\S]*?)<\/span>\s*<\/span>/gi;
+// Kaishi marks the nasal g (鼻濁音) as カ + a red ° (and キ, ク, ケ, コ alike): read it as ガ行.
+const NASAL = { カ: "ガ", キ: "ギ", ク: "グ", ケ: "ゲ", コ: "ゴ" };
 
-/** Parse the Kaishi "Pitch Accent" field into [{ k: "ワタシ", a: 0 }]. */
+/**
+ * Parse the Kaishi "Pitch Accent" field into [{ k: "ワタシ", a: 0 }].
+ * The markup is nested spans: text inside an inline-block span has the overline (high); a span with a right border inside
+ * it marks the step down after its last mora. Several readings are separated by "・".
+ */
 export function parsePitch(html) {
   const src = String(html || "");
   if (!src.trim()) return [];
+  const tokens = src.match(/<[^>]*>|[^<]+/g) || [];
   const variants = [];
   let cur = { parts: [] };
   const push = () => { if (cur.parts.length) variants.push(cur); cur = { parts: [] }; };
-  const addText = (txt, hi, drop) => {
-    // plain text may hold the "・" separator between variants
-    const pieces = String(txt).replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").split("・");
-    pieces.forEach((p, i) => {
+  const stack = []; // open spans: { wrap, drop, start }
+  const addText = (txt) => {
+    const pieces = String(txt).replace(/&nbsp;/g, " ").split("・");
+    const hi = stack.some((e) => e.wrap);
+    pieces.forEach((piece, i) => {
       if (i > 0) push();
-      const kana = p.replace(/[^぀-ヿー]/g, "");
-      if (kana) cur.parts.push({ kana, hi, drop: !!drop && i === pieces.length - 1 });
+      let kana = "";
+      for (const ch of piece) {
+        if (ch === "°" || ch === "゜") {
+          // the mark sits in its own span after the kana it belongs to
+          if (kana) { const last = kana.slice(-1); if (NASAL[last]) kana = kana.slice(0, -1) + NASAL[last]; }
+          else if (cur.parts.length) { const p = cur.parts[cur.parts.length - 1]; const last = p.kana.slice(-1); if (NASAL[last]) p.kana = p.kana.slice(0, -1) + NASAL[last]; }
+          continue;
+        }
+        if (/[぀-ヿー]/.test(ch)) kana += ch;
+      }
+      if (kana) cur.parts.push({ kana, hi });
     });
   };
-  let last = 0;
-  src.replace(WRAP, (m, inner, offset) => {
-    addText(src.slice(last, offset), false, false);
-    const text = (inner.match(/<span[^>]*>([^<]*)<\/span>/i) || [])[1] || "";
-    const drop = /border-right-width/i.test(m);
-    addText(text, true, drop);
-    last = offset + m.length;
-    return m;
-  });
-  addText(src.slice(last), false, false);
+  for (const t of tokens) {
+    if (t[0] !== "<") { addText(t); continue; }
+    if (/^<\s*span\b/i.test(t)) {
+      const e = { wrap: /display:\s*inline-block/i.test(t), drop: false, start: cur.parts.length, variant: variants.length };
+      if (/border-right-width/i.test(t)) { for (let i = stack.length - 1; i >= 0; i--) if (stack[i].wrap) { stack[i].drop = true; break; } }
+      if (!/\/\s*>$/.test(t)) stack.push(e);
+    } else if (/^<\s*\/\s*span/i.test(t)) {
+      const e = stack.pop();
+      if (e && e.wrap && e.drop && cur.parts.length > e.start && e.variant === variants.length) cur.parts[cur.parts.length - 1].drop = true;
+    }
+  }
   push();
   const out = [];
   for (const v of variants) {
@@ -48,8 +65,7 @@ export function parsePitch(html) {
     if (!k) continue;
     let pos = 0, accent = 0;
     for (const p of v.parts) {
-      const n = morae(p.kana).length;
-      pos += n;
+      pos += morae(p.kana).length;
       if (p.hi && p.drop) accent = pos;
     }
     out.push({ k, a: accent });

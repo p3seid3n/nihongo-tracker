@@ -391,6 +391,7 @@ table.t td:first-child { font-family: var(--font); color: var(--dim); }
 /* ---------- listening and speaking ---------- */
 .flash-tools { flex: none; display: flex; gap: 4px; z-index: 2; }
 .say-btn { color: var(--primary); background: var(--primary-c); width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; flex: none; }
+.say-btn.big-say { width: 72px; height: 72px; border-radius: 36px; }
 .say-btn.small-btn { width: 36px; height: 36px; border-radius: 18px; }
 .say-btn.playing svg { animation: speak-wave 0.9s ease-in-out infinite; }
 .say-target { background: var(--s3); border-radius: 22px; padding: 18px 20px; text-align: center; display: flex; flex-direction: column; gap: 6px; }
@@ -586,3 +587,11 @@ a.btn { text-decoration: none; }
 .out-box { background: var(--s2); border-radius: 18px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; font-size: 0.95rem; }
 .out-box.warn { background: color-mix(in srgb, var(--sand) 14%, var(--s2)); }
 .out-box.ok { background: color-mix(in srgb, var(--sage) 16%, var(--s2)); }
+
+/* pitch practice */
+.feedback-inline { border-radius: 18px; padding: 12px 16px; display: flex; flex-direction: column; gap: 2px; animation: fade 0.18s var(--ease); }
+.feedback-inline.ok { background: var(--sage-c); color: var(--sage); }
+.feedback-inline.no { background: var(--rose-c); color: var(--rose); }
+.feedback-inline .small { color: var(--text); }
+.guess-box { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.guess-note { text-align: center; }

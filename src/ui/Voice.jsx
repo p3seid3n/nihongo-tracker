@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "./icons.jsx";
 import { Sheet, Seg, Banner, Ring } from "./common.jsx";
 import { say, stop as stopAudio, hasJapaneseVoice } from "../lib/audio.js";
+import { PitchWord } from "./Pitch.jsx";
 import { judge, listen, record, recognitionSupported, recordingSupported, ERRORS } from "../lib/pronounce.js";
 import * as hap from "../lib/haptics.js";
 
@@ -26,7 +27,7 @@ export function SpeakBtn({ part, label = "Play audio", className = "", size = 24
 }
 
 /** Opens the pronunciation sheet. items: [{ key, label, text, reading, part }] */
-export function MicBtn({ items, label = "Check my pronunciation", className = "" }) {
+export function MicBtn({ items, label = "Check my pronunciation", className = "", recordOnly = false }) {
   const [open, setOpen] = useState(false);
   if (!items?.length) return null;
   return (
@@ -34,7 +35,7 @@ export function MicBtn({ items, label = "Check my pronunciation", className = ""
       <button type="button" className={`icon-btn say-btn ${className}`} aria-label={label} onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
         <Icon name="mic" size={22} />
       </button>
-      {open && createPortal(<div style={{ display: "contents" }} onClick={(e) => e.stopPropagation()}><PronounceSheet items={items} onClose={() => setOpen(false)} /></div>, document.body)}
+      {open && createPortal(<div style={{ display: "contents" }} onClick={(e) => e.stopPropagation()}><PronounceSheet items={items} recordOnly={recordOnly} onClose={() => setOpen(false)} /></div>, document.body)}
     </>
   );
 }
@@ -45,10 +46,10 @@ const LEVEL = {
   retry: { title: "Not quite", sub: "Listen to it once more, then try again." },
 };
 
-export function PronounceSheet({ items, onClose }) {
+export function PronounceSheet({ items, onClose, recordOnly = false }) {
   const [idx, setIdx] = useState(0);
   const item = items[Math.min(idx, items.length - 1)];
-  const [mode, setMode] = useState(recognitionSupported ? "recognise" : recordingSupported ? "record" : "none");
+  const [mode, setMode] = useState(recordOnly && recordingSupported ? "record" : recognitionSupported ? "recognise" : recordingSupported ? "record" : "none");
   const [phase, setPhase] = useState("idle"); // idle | listening | result | error | recording | recorded
   const [interim, setInterim] = useState("");
   const [result, setResult] = useState(null);
@@ -138,11 +139,12 @@ export function PronounceSheet({ items, onClose }) {
           {result ? result.chars.map((c, i) => <span key={i} className={c.skip ? "" : c.ok ? "hit" : "miss"}>{c.c}</span>) : item.text}
         </div>
         {item.reading && item.reading !== item.text && !result && <div className="dim jp" lang="ja">{item.reading}</div>}
+        {item.pitch && <div style={{ marginTop: 6 }}><PitchWord k={item.pitch.k} a={item.pitch.a} /></div>}
         {item.en && <div className="dim small">{item.en}</div>}
       </div>
 
       {mode === "none" && <Banner kind="err" icon="warn">This browser can't use the microphone. Try Chrome on Android or Safari on iPhone.</Banner>}
-      {mode === "record" && phase !== "error" && <Banner icon="info">This browser can't check pronunciation automatically, so record yourself and compare with the original by ear.</Banner>}
+      {mode === "record" && phase !== "error" && <Banner icon="info">{recordOnly ? "Listen, say it, then compare the two by ear. Follow the melody: where does it step down?" : "This browser can't check pronunciation automatically, so record yourself and compare with the original by ear."}</Banner>}
       {phase === "error" && <Banner kind="err" icon="warn">{err}</Banner>}
 
       {phase === "result" && result && (

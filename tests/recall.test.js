@@ -401,6 +401,17 @@ describe("pitch accent", () => {
     expect(packPitch(parsePitch("ヒ" + wrap("ト") + "・ヒ" + wrap("ト", true)))).toBe("ヒト/0|ヒト/2");
     expect(parsePitch("")).toEqual([]);
   });
+  it("reads nested markup: the nasal g mark and drops after several morae", () => {
+    // いそがしい [4]: イ + (ソ カ° シ with the step down) + イ, with the red ° after カ
+    const inner = 'ソカ<span style="color: red;">°</span>シ';
+    expect(packPitch(parsePitch("イ" + wrap(inner, true) + "イ"))).toBe("イソガシイ/4");
+    // ソンナニ [0]: nothing after the overline
+    expect(packPitch(parsePitch("ソ" + wrap("ンナニ")))).toBe("ソンナニ/0");
+    // サイキン [0]
+    expect(packPitch(parsePitch("サ" + wrap("イキン")))).toBe("サイキン/0");
+    // a ° that does not follow か行 is ignored, stray tags and entities do not break it
+    expect(packPitch(parsePitch("<b>ア</b>&nbsp;" + wrap('ト<span style="color:red">°</span>', true)))).toBe("アト/2");
+  });
   it("counts morae with small kana and long vowels", () => {
     expect(morae("キョウト")).toEqual(["キョ", "ウ", "ト"]);
     expect(morae("ガッコウ")).toHaveLength(4);

@@ -41,6 +41,7 @@ export function Learn() {
         <button className="btn btn-soft" disabled={pool.length < 6} onClick={() => open({ type: "sentences" })}><Icon name="book" /> Sentence practice</button>
         <button className="btn btn-soft" onClick={() => open({ type: "reader" })}><Icon name="book" /> Reading</button>
         <button className="btn btn-soft" onClick={() => open({ type: "output" })}><Icon name="pen" /> Writing prompts</button>
+        <button className="btn btn-soft" onClick={() => open({ type: "pitch" })}><Icon name="volume" /> Pitch practice</button>
       </div>
       {pool.length < 6 && <p className="hint" style={{ marginTop: -8 }}>Sentence practice unlocks once you have studied a few vocabulary cards with example sentences.</p>}
 

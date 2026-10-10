@@ -21,6 +21,7 @@ import { ImportWizard } from "./ui/ImportWizard.jsx";
 import { WritingPlayer } from "./ui/Writing.jsx";
 import { Reader } from "./ui/Reader.jsx";
 import { Output } from "./ui/Output.jsx";
+import PitchPractice from "./ui/PitchPractice.jsx";
 import { Stats } from "./ui/Stats.jsx";
 import { Settings } from "./ui/Settings.jsx";
 
@@ -342,6 +343,7 @@ function OverlayView({ o, close, open }) {
     case "testout": return <PracticePlayer key={o.key} mode="testout" unitId={o.unit} onClose={close} />;
     case "reader": return <Reader key={o.key} onClose={close} startId={o.id || null} />;
     case "output": return <Output key={o.key} onClose={close} />;
+    case "pitch": return <PitchPractice key={o.key} onClose={close} />;
     case "write": return <WritingPlayer key={o.key} items={o.items || []} onClose={close} />;
     case "import": return <ImportWizard key={o.key} onClose={close} onOpen={(n) => open(n)} />;
     case "auth": return <div className="fullscreen" key={o.key}><Auth onDone={close} onSkip={close} skipLabel="Not now" /></div>;

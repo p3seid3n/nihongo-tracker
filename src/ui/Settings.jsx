@@ -8,8 +8,9 @@ import { SOURCE } from "../content/lessons.js";
 import { loadVoices, pickVoice, say, getAudioInfo, clearAudio, ttsSupported, audioPlan } from "../lib/audio.js";
 import { KANJI_FONTS, ensureFont } from "../lib/fonts.js";
 import { recognitionSupported, recordingSupported } from "../lib/pronounce.js";
+import MemoryModel from "./MemoryModel.jsx";
 
-export const APP_VERSION = "4.5.0";
+export const APP_VERSION = "4.6.0";
 
 function Row({ title, sub, children }) {
   return (
@@ -215,12 +216,15 @@ export function Settings() {
         <Row title="Recall cards" sub="Once you recognise a word well, you also get asked to say it in Japanese: you see the meaning and type the word."><Switch checked={s.recall !== false} onChange={(v) => set({ recall: v })} label="Recall cards" /></Row>
         {s.recall !== false && <Row title="New recall cards per day"><Stepper value={s.recallNewPerDay ?? 5} min={0} max={30} label="new recall cards" onChange={(v) => set({ recallNewPerDay: v })} /></Row>}
         {s.recall !== false && <Row title="Start recall after" sub="How many days a word must stay in your memory first."><Stepper value={s.recallAfter ?? 4} min={1} max={60} label="days before recall" onChange={(v) => set({ recallAfter: v })} /></Row>}
+        <Row title="Guess before you see it" sub="Before a new word or kanji is shown, you get a moment to guess what it means. A wrong guess still helps it stick (the pretesting effect), but it makes new cards slower. Off by default."><Switch checked={s.pretest === true} onChange={(v) => set({ pretest: v })} label="Guess before you see it" /></Row>
         <Row title="Weak spots round" sub="At the end of a session, a few cards you missed twice in the last three days come back once more."><Switch checked={s.weakSpots !== false} onChange={(v) => set({ weakSpots: v })} label="Weak spots round" /></Row>
         <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
           <div><div>Target retention</div><div className="small dim">How often you want to remember a card when it comes back</div></div>
           <Seg label="Target retention" value={s.retention} onChange={(v) => set({ retention: v })} options={[{ value: 0.85, label: "85%" }, { value: 0.9, label: "90%" }, { value: 0.95, label: "95%" }]} />
         </div>
       </Section>
+
+      <MemoryModel Section={Section} Row={Row} />
 
       <AudioSection s={s} set={set} />
 

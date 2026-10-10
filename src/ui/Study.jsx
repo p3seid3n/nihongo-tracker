@@ -55,6 +55,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
   const wordIndex = useRef(null);
   const lexRef = useRef(null);
   const [sIndex, setSIndex] = useState(null);
+  const [guess, setGuess] = useState(""); // pretesting: what you think a new card means, before you see it
 
   const isP = !!cur && isProd(cur.id);
   const card = cur ? store.card(cur.id) : null;
@@ -62,7 +63,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
   const rec = cur ? store.rec(cur.id) : null;
   const baseRec = cur ? store.rec(baseId(cur.id)) : null;
 
-  useEffect(() => { startRef.current = Date.now(); }, [cur?.id]);
+  useEffect(() => { startRef.current = Date.now(); setGuess(""); }, [cur?.id]);
 
   // other sentences for the same word are indexed in the background
   useEffect(() => {
@@ -212,6 +213,8 @@ export function Study({ opts = {}, onClose, onOpen }) {
   const kind = deck?.kind;
   const curIsNew = cur.src === "main" && (!rec || rec.st === NEW);
   const curIsRev = cur.src === "main" && !curIsNew;
+  // pretesting (off by default): try to guess a new word or kanji before it is shown. A wrong guess still helps it stick.
+  const pretest = store.settings.pretest === true && curIsNew && !isP && (kind === "vocab" || kind === "kanji");
   const showTools = !isP || shown;
   const noteId = baseId(cur.id);
 
@@ -241,7 +244,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
         </div>
 
         <div className="study-body">
-          <div className="flash card-in" key={cardKey} onClick={!shown && !isP ? reveal : undefined}>
+          <div className="flash card-in" key={cardKey} onClick={!shown && !isP && !pretest ? reveal : undefined}>
             <div className="flash-head">
               <span className="chip tag">{deck?.name || ""}{isP ? " · Recall" : cur.src === "weak" ? " · Weak spot" : ""}</span>
               <div className="flash-tools">
@@ -256,12 +259,21 @@ export function Study({ opts = {}, onClose, onOpen }) {
               {shown && <Back kind={kind} card={card} related={related} sentence={chosen} recall={isP} />}
               {shown && baseRec?.note && <div className="mnemo"><span className="label">My mnemonic</span><div>{baseRec.note}</div></div>}
               {shown && kind !== "kana" && <button type="button" className="link-btn" onClick={() => setSheet({ type: "note", id: noteId })}><Icon name="edit" size={16} /> {baseRec?.note ? "Edit my mnemonic" : "Add my mnemonic"}</button>}
-              {!shown && !isP && <span className="reveal-hint">Tap to show the answer</span>}
+              {shown && pretest && <div className="mnemo guess-note"><span className="label">Your guess</span><div>{guess.trim() || "No guess"}</div></div>}
+              {!shown && !isP && !pretest && <span className="reveal-hint">Tap to show the answer</span>}
             </div>
           </div>
           {!shown ? (
             isP ? <RecallInput key={cardKey} card={card} onResult={showRecall} />
-              : <button className="btn btn-primary show-btn btn-block" data-haptic="none" onClick={reveal}>Show answer</button>
+              : pretest
+                ? (
+                  <div className="guess-box">
+                    <input className="input" value={guess} onChange={(e) => setGuess(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); reveal(); } }}
+                      placeholder="What might it mean? A guess is fine." aria-label="Your guess" autoCapitalize="off" autoCorrect="off" spellCheck={false} enterKeyHint="go" />
+                    <button className="btn btn-primary show-btn btn-block" data-haptic="none" onClick={reveal}>{guess.trim() ? "Check my guess" : "I have no idea, show it"}</button>
+                  </div>
+                )
+                : <button className="btn btn-primary show-btn btn-block" data-haptic="none" onClick={reveal}>Show answer</button>
           ) : (
             <div className="grades">
               {[["Again", 1], ["Hard", 2], ["Good", 3], ["Easy", 4]].map(([label, g]) => (
