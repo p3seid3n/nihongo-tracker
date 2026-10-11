@@ -108,6 +108,60 @@ await pa.click("button:has-text('Cancel and sign out')");
 try { await pa.waitForSelector("text=Sign in or create account", { timeout: 8000 }); } catch (e) { await shot(pa, "47-debug"); log("DEBUG text:", (await pa.innerText("body")).slice(0, 600)); log("session:", await pa.evaluate(() => localStorage.getItem("nt4-auth")?.slice(0, 80))); throw e; }
 ok(true, "other-account prompt works");
 
+// ---- first sync on a project whose table does not exist yet: the app asks /api/setup-sync, then carries on
+{
+  const C = await launch();
+  const pc = C.page;
+  let setupCalls = 0;
+  let setupMode = "ok"; // ok | nodb
+  mock.state.missingTable = true;
+  await pc.route("**/api/setup-sync", async (route) => {
+    setupCalls++;
+    if (setupMode === "nodb") return route.fulfill({ status: 501, contentType: "application/json", body: JSON.stringify({ ok: false, reason: "no-database", message: "x" }) });
+    mock.state.missingTable = false; // what the real function does: create the table
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, created: true }) });
+  });
+  await pc.goto(URL_, { waitUntil: "networkidle" });
+  await pc.click("text=Get started"); await pc.click("text=Intermediate");
+  await pc.click("text=Continue"); await pc.click("text=Continue"); await pc.click("text=Continue");
+  await pc.click("text=Start learning"); await pc.waitForSelector(".plan-hero");
+  await settingsPage(pc, "account");
+  await pc.click("text=Sign in or create account");
+  await pc.click("text=I'm new here");
+  await pc.fill("#em", "third@example.com");
+  await pc.fill("#pw", "third password 123");
+  await pc.click("button[type=submit]");
+  await pc.waitForSelector("text=Combine with your account?"); await pc.click("text=Combine both");
+  try { await pc.waitForSelector("text=Up to date", { timeout: 20000 }); } catch (e) { await shot(pc, "48-debug"); log("DEBUG:", (await pc.innerText("body")).slice(0, 500)); throw e; }
+  ok(setupCalls === 1, `table created by one call to /api/setup-sync (${setupCalls})`);
+  ok(mock.rows.size > 0 && mock.state.missingTable === false, "data uploaded after the table appeared");
+  await shot(pc, "48-auto-setup");
+  await C.browser.close();
+
+  // the integration is not connected: a clear message, no endless retries
+  const D = await launch();
+  const pd = D.page;
+  setupCalls = 0; setupMode = "nodb";
+  mock.state.missingTable = true;
+  await pd.route("**/api/setup-sync", async (route) => { setupCalls++; return route.fulfill({ status: 501, contentType: "application/json", body: JSON.stringify({ ok: false, reason: "no-database", message: "x" }) }); });
+  await pd.goto(URL_, { waitUntil: "networkidle" });
+  await pd.click("text=Get started"); await pd.click("text=Intermediate");
+  await pd.click("text=Continue"); await pd.click("text=Continue"); await pd.click("text=Continue");
+  await pd.click("text=Start learning"); await pd.waitForSelector(".plan-hero");
+  await settingsPage(pd, "account");
+  await pd.click("text=Sign in or create account");
+  await pd.click("text=I'm new here");
+  await pd.fill("#em", "fourth@example.com");
+  await pd.fill("#pw", "fourth password 123");
+  await pd.click("button[type=submit]");
+  await pd.waitForSelector("text=Combine with your account?"); await pd.click("text=Combine both");
+  await pd.waitForSelector("text=/add Supabase, then redeploy/", { timeout: 20000 });
+  await shot(pd, "49-no-database");
+  ok(setupCalls === 1, `asked once, then stopped (${setupCalls})`);
+  await D.browser.close();
+  mock.state.missingTable = false;
+}
+
 log("A errors:", A.errors);
 log("B errors:", B.errors);
 log("mock stats:", mock.stats);

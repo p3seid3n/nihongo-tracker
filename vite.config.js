@@ -42,6 +42,9 @@ function serviceWorker() {
 
 export default defineConfig({
   plugins: [react(), serviceWorker()],
+  // VITE_ is Vite's own prefix. NEXT_PUBLIC_SUPABASE_ is what the Vercel–Supabase integration adds (public values only;
+  // service keys and the database address have other names and stay on the server).
+  envPrefix: ["VITE_", "NEXT_PUBLIC_SUPABASE_"],
   build: { target: "es2020", sourcemap: false, chunkSizeWarningLimit: 900 },
   test: { include: ["tests/**/*.test.js"], environment: "node" },
 });

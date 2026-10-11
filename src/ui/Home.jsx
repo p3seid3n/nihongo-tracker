@@ -1,6 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { Icon } from "./icons.jsx";
 import { Ring, Step, useApp, useNow, plural, fmtNum } from "./common.jsx";
+import { InkWord, Hanko } from "./Ink.jsx";
 import { usePlanInputs } from "./planInputs.js";
 import { buildPlan } from "../lib/plan.js";
 import { dayIndexToDate } from "../lib/time.js";
@@ -29,6 +30,10 @@ export function Home() {
   const { counts, stats } = inputs;
   const v = store.getVersion();
   const plan = useMemo(() => buildPlan(store, now, inputs), [v, now, inputs.pitchCount, inputs.writeSet]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // the seal thuds only when the plan is finished while you are looking at it, not every time you open the tab
+  const wasDone = useRef(plan.allDone);
+  const stampNow = plan.allDone && !wasDone.current;
 
   const s = store.settings;
   const userDecks = store.deckList().filter((d) => !d.builtin);
@@ -59,12 +64,12 @@ export function Home() {
         </div>
       </header>
 
-      <section className="plan-hero" aria-label="Today">
+      <section className="plan-hero ink-card" aria-label="Today">
         <Ring size={96} stroke={9} value={plan.allDone ? 1 : progress}>
           {plan.allDone ? <Icon name="check" size={34} /> : <div><b style={{ fontSize: "1.6rem" }}>{finished}/{total}</b><div className="tiny dim">done</div></div>}
         </Ring>
         <div className="stack grow" style={{ gap: 6 }}>
-          <h2>{plan.allDone ? "Today's plan is done" : "Today's plan"}</h2>
+          <h2><InkWord key={String(plan.allDone)}>{plan.allDone ? "Today's plan is done" : "Today's plan"}</InkWord></h2>
           <div className="row-wrap">
             {plan.allDone
               ? <span className="chip">{counts.today.total ? `${counts.today.total} cards reviewed` : "Nothing left"}</span>
@@ -100,8 +105,8 @@ export function Home() {
       )}
 
       {plan.allDone && (
-        <section className="card stack center" style={{ alignItems: "center" }}>
-          <div className="big jp" lang="ja" style={{ fontSize: "2.4rem", color: "var(--primary)" }}>お疲れ様</div>
+        <section className="card stack center ink-card" style={{ alignItems: "center" }}>
+          <div className="big jp ink-host" lang="ja" style={{ fontSize: "2.4rem", color: "var(--primary)" }}><InkWord delay={150}>お疲れ様</InkWord><Hanko className="hanko-corner" size={26} delay={420} haptic={stampNow} /></div>
           <p className="dim">You're done for today. Want to do a little more?</p>
           <div className="row-wrap" style={{ justifyContent: "center" }}>
             {counts.newAvailable > 0 && <button className="btn btn-tonal" onClick={() => open({ type: "study", opts: { extraNew: 5 } })}>5 more new cards</button>}

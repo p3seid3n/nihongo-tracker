@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { signIn, signUp, resetPassword, setNewPassword, cloudConfigured } from "../lib/auth.js";
 import { Icon } from "./icons.jsx";
+import { InkBrand } from "./Ink.jsx";
 import { Banner } from "./common.jsx";
 
 /** Login / sign-up / password reset. `recovery` is set when the user arrived from a reset email. */
@@ -35,7 +36,7 @@ export function Auth({ onDone, onSkip, recovery = false, skipLabel = "Continue w
       if (mode === "signin") { await signIn(email, pw); onDone(); }
       else if (mode === "signup") {
         const { needsConfirm } = await signUp(email, pw);
-        if (needsConfirm) setInfo("Almost done. We sent a confirmation link to your email. Open it, then come back and sign in.");
+        if (needsConfirm) setInfo(`Almost done. We sent a confirmation link to your email. Open it, then come back and sign in. If the link opens a page that doesn't load, set Site URL to ${window.location.origin} in Supabase → Authentication → URL Configuration.`);
         else onDone();
       } else if (mode === "forgot") {
         await resetPassword(email);
@@ -60,7 +61,7 @@ export function Auth({ onDone, onSkip, recovery = false, skipLabel = "Continue w
 
   return (
     <div className="welcome">
-      <div className="brand-kanji" lang="ja">言</div>
+      <InkBrand />
       <div className="stack">
         <h1>{titles[mode]}</h1>
         <p className="dim">{subs[mode]}</p>

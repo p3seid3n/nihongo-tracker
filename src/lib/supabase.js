@@ -1,13 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import { pickCloudEnv } from "./cloudEnv.js";
 
-const url = import.meta.env?.VITE_SUPABASE_URL;
-const key = import.meta.env?.VITE_SUPABASE_ANON_KEY;
+const env = pickCloudEnv(import.meta.env || {});
 
 /** True when the deployment has a Supabase project configured. */
-export const cloudConfigured = !!(url && key && /^https?:\/\//.test(url));
+export const cloudConfigured = env.ok;
 
 export const supabase = cloudConfigured
-  ? createClient(url, key, {
+  ? createClient(env.url, env.key, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "nt4-auth" },
     })
   : null;

@@ -3,6 +3,7 @@ import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
 import { Rich, ExerciseRunner } from "./Exercises.jsx";
 import { useApp, useNow, PageHead, plural, Sheet, Burst } from "./common.jsx";
+import { InkWord, Hanko } from "./Ink.jsx";
 import { UNITS, LESSONS, LESSON_BY_ID, SOURCE, taeKimUrl } from "../content/lessons.js";
 import { LessonTable } from "./LessonTable.jsx";
 import { buildLessonExercises, buildReviewExercises, lessonExamples } from "../lib/exercises.js";
@@ -139,7 +140,7 @@ export function LessonPlayer({ id, onClose, onOpen }) {
     store.logLesson(id, acc, r.ms);
     setResult({ acc, rec, passed: acc >= 0.6, r });
     setStage("result");
-    hap.done();
+    hap.lesson();
   };
 
   if (stage === "practice") {
@@ -153,7 +154,7 @@ export function LessonPlayer({ id, onClose, onOpen }) {
       <Shell onClose={onClose}>
         <div className="lesson-body" style={{ alignItems: "center", textAlign: "center", paddingTop: 40 }}>
           {result.passed && <Burst />}
-          <div className="big jp" lang="ja" style={{ fontSize: "4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}>{result.acc >= 1 ? "完璧" : result.passed ? "合格" : "もう一度"}</div>
+          <div className="big jp ink-host" lang="ja" style={{ fontSize: "4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}><InkWord>{result.acc >= 1 ? "完璧" : result.passed ? "合格" : "もう一度"}</InkWord>{result.passed && <Hanko className="hanko-corner" size={30} delay={230} />}</div>
           <h1>{result.passed ? "Lesson complete" : "Almost there"}</h1>
           <div className="stat-row">
             <div className="stat"><b>{Math.round(result.acc * 100)}%</b><span>correct first try</span></div>
@@ -298,7 +299,7 @@ export function PracticePlayer({ mode, unitId, onClose }) {
       <Shell>
         <div className="lesson-body" style={{ alignItems: "center", textAlign: "center", paddingTop: 40 }}>
           {result.passed && <Burst />}
-          <div className="big jp" lang="ja" style={{ fontSize: "4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}>{result.passed ? "完了" : "残念"}</div>
+          <div className="big jp ink-host" lang="ja" style={{ fontSize: "4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}><InkWord>{result.passed ? "完了" : "残念"}</InkWord>{result.passed && <Hanko className="hanko-corner" size={30} delay={230} />}</div>
           <h1>{mode === "testout" ? (result.passed ? "Unit skipped" : "Not this time") : "Practice complete"}</h1>
           <div className="stat-row">
             <div className="stat"><b>{Math.round(result.acc * 100)}%</b><span>correct first try</span></div>

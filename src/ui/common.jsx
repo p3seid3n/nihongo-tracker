@@ -5,6 +5,12 @@ import * as hap from "../lib/haptics.js";
 import { lockScroll } from "../lib/scrollLock.js";
 
 export const AppCtx = createContext(null);
+/** Scroll the main page back to the top (the app scrolls inside .app-scroll, not the document). */
+export function scrollToTop() {
+  const el = typeof document !== "undefined" ? document.querySelector(".app-scroll") : null;
+  if (el) el.scrollTop = 0;
+  if (typeof window !== "undefined") window.scrollTo(0, 0);
+}
 /** True while a full-screen view covers the tabs: they stay mounted underneath (so closing is instant and
  *  keeps the scroll position) but stop reacting to the store until you come back. */
 export const PauseCtx = createContext(false);

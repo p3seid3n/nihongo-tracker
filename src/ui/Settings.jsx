@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "./icons.jsx";
-import { Switch, Seg, Stepper, Banner, useApp, PageHead, plural } from "./common.jsx";
+import { Switch, Seg, Stepper, Banner, useApp, PageHead, plural, scrollToTop } from "./common.jsx";
 import { signOut, cloudConfigured } from "../lib/auth.js";
 import { setHaptics, canHaptic, onIOS } from "../lib/haptics.js";
 import * as hap from "../lib/haptics.js";
@@ -12,7 +12,7 @@ import MemoryModel from "./MemoryModel.jsx";
 import { Library } from "./Library.jsx";
 import { PACE, EARLY_LESSONS, grammarInterval } from "../lib/plan.js";
 
-export const APP_VERSION = "4.7.0";
+export const APP_VERSION = "4.8.0";
 
 function Row({ title, sub, children }) {
   return (
@@ -138,7 +138,7 @@ export function Settings() {
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [page, setPageRaw] = useState(null);
-  const setPage = (p) => { setPageRaw(p); window.scrollTo(0, 0); };
+  const setPage = (p) => { setPageRaw(p); scrollToTop(); };
   const back = () => setPage(null);
   const set = (patch) => store.updateSettings(patch);
   const setTrack = (k, v) => set({ tracks: { ...s.tracks, [k]: v } });
@@ -196,7 +196,7 @@ export function Settings() {
     return (
       <Sub title="Account and sync" onBack={back}>
         <section className="stack" style={{ gap: 10 }}>
-          {!cloudConfigured && <Banner icon="info">Cloud sync isn't set up for this copy of the app. Everything is saved on this device. The README explains how to connect a free Supabase project.</Banner>}
+          {!cloudConfigured && <Banner icon="info">Cloud sync isn't connected for this copy of the app. Everything is saved on this device. Easiest way: in Vercel open your project → Storage → add Supabase, then redeploy. The app creates its own table. The README has the steps.</Banner>}
           {cloudConfigured && !session && (
             <div className="card stack">
               <p className="dim">Sign in to keep your progress in sync between your phone and computer.</p>
@@ -309,14 +309,18 @@ export function Settings() {
           </div>
         </Section>
         <Section title="Touch">
-          <Row title="Haptic feedback" sub={canHaptic ? (onIOS ? "Taps and answers play a light tick (iOS 17.4 or newer)" : "Short vibrations on taps and answers") : "This browser can't vibrate. Works on Android Chrome and iPhone Safari."}><Switch checked={s.haptics} onChange={(v) => { set({ haptics: v }); setHaptics(v); if (v) hap.medium(); }} label="Haptics" /></Row>
+          <Row title="Haptic feedback" sub={canHaptic ? (onIOS ? "Taps and answers play a light tick (iOS 17.4 or newer)" : "Layered vibration patterns: crisp taps, a different feel for each grade, and a long roll when you finish") : "This browser can't vibrate. Works on Android Chrome and iPhone Safari."}><Switch checked={s.haptics} onChange={(v) => { set({ haptics: v }); setHaptics(v); if (v) hap.medium(); }} label="Haptics" /></Row>
           {s.haptics && canHaptic && (
             <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }} data-haptic="none">
-              <div><div>Try haptics</div><div className="small dim">Tap, good, wrong, finished</div></div>
+              <div><div>Try haptics</div><div className="small dim">Each answer and moment has its own rhythm</div></div>
               <div className="row-wrap">
                 <button className="btn btn-soft btn-sm" onClick={hap.tap}>Tap</button>
+                <button className="btn btn-soft btn-sm" onClick={hap.again}>Again</button>
+                <button className="btn btn-soft btn-sm" onClick={hap.hard}>Hard</button>
                 <button className="btn btn-soft btn-sm" onClick={hap.good}>Good</button>
-                <button className="btn btn-soft btn-sm" onClick={hap.bad}>Wrong</button>
+                <button className="btn btn-soft btn-sm" onClick={hap.easy}>Easy</button>
+                <button className="btn btn-soft btn-sm" onClick={hap.inkFlow}>Ink flow</button>
+                <button className="btn btn-soft btn-sm" onClick={hap.stamp}>Stamp</button>
                 <button className="btn btn-soft btn-sm" onClick={hap.done}>Finished</button>
               </div>
             </div>

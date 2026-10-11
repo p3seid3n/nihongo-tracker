@@ -53,6 +53,10 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
+/* The document itself never scrolls: the app scrolls inside .app-scroll. That keeps the dock still (browser toolbars
+   only collapse and return when the document scrolls, which resized the viewport under the dock) and stops pull-to-refresh. */
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+#root { height: 100%; }
 body { font-family: var(--font); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
 button:disabled { cursor: default; }
@@ -70,7 +74,8 @@ html[data-kfont="textbook"] { --font-kanji: var(--kf-textbook); --font-word: var
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---------- layout ---------- */
-.app { min-height: 100dvh; }
+.app { position: fixed; inset: 0; }
+.app-scroll { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .page { max-width: 640px; margin: 0 auto; padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(112px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 20px; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
 .stack { display: flex; flex-direction: column; gap: 12px; }

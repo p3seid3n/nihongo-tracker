@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { InkWord, Hanko } from "./Ink.jsx";
 import { Icon } from "./icons.jsx";
 import { Banner, Seg, Stepper, Switch, useApp, plural, fmtNum } from "./common.jsx";
 import { parseApkg, applyImport } from "../lib/importer/apkg.js";
@@ -200,7 +201,7 @@ export function ImportWizard({ onClose, onOpen }) {
 
         {stage === "done" && (
           <div className="stack center" style={{ alignItems: "center", paddingTop: 40 }}>
-            <div className="big jp" lang="ja" style={{ fontSize: "4rem", color: "var(--primary)" }}>完了</div>
+            <div className="big jp ink-host" lang="ja" style={{ fontSize: "4rem", color: "var(--primary)" }}><InkWord>完了</InkWord><Hanko className="hanko-corner" size={30} delay={300} haptic /></div>
             <h1>Imported {fmtNum(added)} cards</h1>
             {audioDone && <p className="dim">{audioDone.error ? "The audio couldn't be saved, so cards will use the built-in voice." : `${fmtNum(audioDone.stored)} audio recordings saved${audioDone.failed ? `, ${fmtNum(audioDone.failed)} could not be read` : ""}.`}</p>}
             <p className="dim">Your decks are ready. Cards you marked as known will come back for a quick check over the next days.</p>

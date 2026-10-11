@@ -7,6 +7,7 @@ export function startMock(port = 54321) {
   const users = new Map(); // email -> {id,email,password}
   const rows = new Map(); // `${uid}|${key}` -> {key,data,rev}
   const stats = { requests: 0, puts: 0, conflicts: 0 };
+  const state = { missingTable: false }; // true = the app_data table does not exist yet (PostgREST answers 404 / PGRST205)
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const jwt = (u) => `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: u.id, email: u.email, role: "authenticated", aud: "authenticated", exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`;
   const session = (u) => ({ access_token: jwt(u), token_type: "bearer", expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: "r_" + u.id, user: { id: u.id, aud: "authenticated", role: "authenticated", email: u.email, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } });
@@ -55,6 +56,7 @@ export function startMock(port = 54321) {
     if (p === "/rest/v1/app_data") {
       const uid = uidOf(req);
       if (!uid) return send(401, { message: "JWT required" });
+      if (state.missingTable) return send(404, { code: "PGRST205", message: "Could not find the table 'public.app_data' in the schema cache", hint: null, details: null });
       const mine = () => [...rows.entries()].filter(([k]) => k.startsWith(uid + "|")).map(([, v]) => v);
       const filt = (name) => url.searchParams.get(name);
       const parseIn = (v) => v.replace(/^in\./, "").replace(/^\(|\)$/g, "").split(",").map((s) => s.replace(/^"|"$/g, ""));
@@ -89,7 +91,7 @@ export function startMock(port = 54321) {
     }
     send(404, { message: "not found " + p });
   });
-  return new Promise((resolve) => server.listen(port, "127.0.0.1", () => resolve({ server, users, rows, stats, close: () => server.close() })));
+  return new Promise((resolve) => server.listen(port, "127.0.0.1", () => resolve({ server, users, rows, stats, state, close: () => server.close() })));
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

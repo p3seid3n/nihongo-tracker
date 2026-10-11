@@ -1,6 +1,8 @@
 -- Run this once in the Supabase SQL editor (Dashboard → SQL Editor → New query → Run).
 -- It creates one table that holds each person's study data, and locks it so that
 -- every account can only ever read and write its own rows.
+-- (If you connected Supabase through Vercel → Storage you don't need this: the app runs the same
+--  statements by itself the first time it syncs. api/_schema.js holds the copy it uses.)
 
 create table if not exists public.app_data (
   user_id    uuid        not null default auth.uid() references auth.users (id) on delete cascade,

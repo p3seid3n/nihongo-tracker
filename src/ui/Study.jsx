@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
 import { useApp, plural, Burst } from "./common.jsx";
+import { InkWord, Hanko } from "./Ink.jsx";
 import { buildSession, buildCounts, LEARN_AHEAD } from "../lib/queue.js";
 import { previewDelays, LEARNING, RELEARNING, NEW } from "../lib/fsrs.js";
 import { fmtSpan } from "../lib/time.js";
@@ -77,7 +78,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
     try { return previewDelays(rec, Date.now(), store.cfgFor(cur.id), cur.id); } catch { return null; }
   }, [cur, shown]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const reveal = useCallback(() => { if (cur && !shown && !isProd(cur.id)) { setShown(true); hap.tap(); } }, [cur, shown]);
+  const reveal = useCallback(() => { if (cur && !shown && !isProd(cur.id)) { setShown(true); hap.reveal(); } }, [cur, shown]);
   const showRecall = useCallback((res) => { setRecallRes(res); setShown(true); }, []);
 
   const grade = useCallback((g) => {
@@ -101,7 +102,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
     setLearnQ(nl);
     setCur(pickNext(store, nm, nl, nw));
     setShown(false);
-    if (g === 1) hap.bad(); else if (g === 2) hap.medium(); else if (g === 3) hap.good(); else hap.success();
+    if (g === 1) hap.again(); else if (g === 2) hap.hard(); else if (g === 3) hap.good(); else hap.easy();
     if (isLeechHit(entry.prev, nx, g)) setSheet({ type: "leech", id: baseId(cur.id), lapses: nx.lapses });
   }, [cur, shown, main, learnQ, weak, finished, tally, store]);
 
@@ -364,7 +365,7 @@ function Summary({ store, tally, total, onClose, onOpen, opts }) {
           ) : (
             <>
               <Burst />
-              <div className="big jp" lang="ja" style={{ fontSize: "4rem", color: "var(--primary)" }}>完了</div>
+              <div className="big jp ink-host" lang="ja" style={{ fontSize: "4rem", color: "var(--primary)" }}><InkWord>完了</InkWord><Hanko className="hanko-corner" size={30} delay={240} /></div>
               <h1>Session complete</h1>
               <div className="stat-row">
                 <div className="stat"><b>{n}</b><span>answers</span></div>

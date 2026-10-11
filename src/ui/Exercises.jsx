@@ -82,7 +82,7 @@ function Choose({ ex, onDone }) {
   const correct = ex.options.find((o) => o.correct);
   const check = () => {
     const ok = !!ex.options.find((o) => o.id === sel)?.correct;
-    ok ? hap.good() : hap.bad();
+    ok ? hap.correct() : hap.wrong();
     setVerdict({ correct: ok, answer: correct.text, explain: ex.explain });
   };
   const hasBlank = p.blank != null && p.jp;
@@ -143,7 +143,7 @@ function Build({ ex, onDone }) {
   const texts = picked.map((id) => byId[id].text);
   const check = () => {
     const ok = checkBuild(ex, texts);
-    ok ? hap.good() : hap.bad();
+    ok ? hap.correct() : hap.wrong();
     setVerdict({ correct: ok, answer: ex.answer.join(""), explain: ex.explain });
   };
   useRecapAudio(verdict, ex.recap);
@@ -189,9 +189,9 @@ function Match({ ex, onDone }) {
       if (side === "l") hear(id);
       return;
     }
-    if (sel.id === id) { setGone((g) => ({ ...g, [id]: true })); setSel(null); hap.good(); hear(id); return; }
+    if (sel.id === id) { setGone((g) => ({ ...g, [id]: true })); setSel(null); hap.match(); hear(id); return; }
     const key = side + id;
-    setWrong(key); setMistakes((m) => m + 1); hap.bad();
+    setWrong(key); setMistakes((m) => m + 1); hap.wrong();
     setTimeout(() => setWrong((w) => (w === key ? null : w)), 350);
   };
   const on = (side, id) => !!sel && sel.side === side && sel.id === id;

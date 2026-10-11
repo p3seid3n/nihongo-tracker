@@ -1,6 +1,6 @@
 # Kotoba (Nihongo Tracker 4)
 
-The app is called **Kotoba** on the home screen (`name`/`short_name` in `public/manifest.webmanifest`, plus `<title>` and `apple-mobile-web-app-title` in `index.html`). The icon is a brush-stroke 言 drawn from KanjiVG stroke data: `node scripts/make-icons.mjs`.
+The app is called **Kotoba** on the home screen (`name`/`short_name` in `public/manifest.webmanifest`, plus `<title>` and `apple-mobile-web-app-title` in `index.html`). The icon is a black brush-ink 言 on washi paper with a red sun, drawn from KanjiVG stroke data. `node scripts/make-icons.mjs` regenerates the icons, the brush outlines in `src/ink/glyph.js` and the opening animation in `index.html`.
 
 A homescreen web app (PWA) for learning Japanese: spaced repetition (FSRS) for kana, kanji and vocabulary, interactive grammar lessons that adapt to the words you know, stats, and sync between devices.
 
@@ -12,19 +12,20 @@ A homescreen web app (PWA) for learning Japanese: spaced repetition (FSRS) for k
 
 The app works fully without step "Cloud sync" below. Everything is stored on the device.
 
-## Cloud sync and login (about 10 minutes, free)
+## Cloud sync and login (free, about 3 minutes)
 
-1. Create a project at supabase.com (free plan is enough).
-2. Dashboard → SQL Editor → New query → paste the contents of `supabase.sql` → Run.
-3. Dashboard → Project Settings → API: copy the **Project URL** and the **anon public key**.
-4. Vercel → your project → Settings → Environment Variables. Add
-   `VITE_SUPABASE_URL` = the Project URL
-   `VITE_SUPABASE_ANON_KEY` = the anon key
-   then Deployments → Redeploy.
-5. Supabase → Authentication → URL Configuration: set **Site URL** to your Vercel address (`https://nihongo-tracker-kappa.vercel.app`). Needed for the confirmation and password-reset emails.
-6. In the app: Settings → Sign in or create account. Use the same account on every device.
+The easy way, all inside Vercel:
 
-The anon key is meant to be public. Your data is protected by row-level security from `supabase.sql`: each account can only see its own rows.
+1. Vercel → your project → **Storage** → **Create / Connect** → **Supabase** (free plan). Accept the defaults. Vercel creates the Supabase project and adds its settings to your project's environment variables.
+2. Deployments → **Redeploy** (so the build sees the new variables).
+3. In the app: Settings → Account and sync → Sign in or create account. The first time it syncs, the app creates its own table through a small Vercel Function (`api/setup-sync.js`); you don't open the Supabase dashboard.
+4. If the confirmation email's link doesn't open the app: Supabase → Authentication → URL Configuration → set **Site URL** to your Vercel address. (Or switch off "Confirm email" there.) This is the one thing the integration can't do for you.
+
+How it works: the integration adds `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `..._PUBLISHABLE_KEY`), which the build reads (`envPrefix` in `vite.config.js`, `src/lib/cloudEnv.js`), and `POSTGRES_URL_NON_POOLING`, which only the server function uses. When sync finds no table, the app calls `/api/setup-sync` once; the function runs the statements in `api/_schema.js` (the same as `supabase.sql`, a test keeps them identical) and the request is retried. It only ever creates that one table, and does nothing when it already exists. Supabase hosts the database and logins; it doesn't host the app, so the app stays on Vercel.
+
+The manual way (any host, or if you prefer): create a project at supabase.com, run `supabase.sql` in the SQL editor, then set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Vercel and redeploy.
+
+The anon key is meant to be public. Your data is protected by row-level security: each account can only see its own rows.
 
 ## Importing your Anki decks
 
@@ -49,7 +50,9 @@ Settings → Backup and import (or the button on Today). Pick the `.apkg`. Parsi
 * **Furigana:** shown only for kanji you have not learned yet (kanji cards you graduated, plus kanji in well-known words). Change in Settings.
 * **Sync:** offline-first. Each part of your data (settings, decks, progress per deck, review log per month) is merged by timestamp, so two devices never overwrite each other's reviews. Signing in on a device that already has data asks whether to combine or replace.
 * **Motion:** follows Material 3 Expressive. Movement of things (cards, sheets, the nav pill, bars) uses springs that overshoot slightly; fades and colour use springs that settle without bounce. The spring curves are generated as CSS `linear()` easings (`npm run springs` regenerates `src/springs.css`). Sheets can be dragged down and settle with the speed of your finger. Settings → Animations → Reduced (or your device's reduce-motion setting) turns it down.
-* **Haptics:** a light tick on every control, patterns for Again / Hard / Good / Easy, right and wrong answers, and finishing. Android (Chrome) uses the Vibration API. iPhone Safari 17.4 and newer has no vibration API, so a hidden switch control is toggled to get the system tick. Desktop browsers don't vibrate. Settings → Haptic feedback has a test row.
+* **Haptics:** every control ticks; switches rise when turned on and fall when turned off; turning a card over is a tick-tock; Again is a heavy double knock, Hard one firm knock and an echo, Good a crisp pair, Easy a rising run; right and wrong answers, matching pairs and pen strokes each have their own; finishing a session or lesson builds up to a thud as the seal lands; the ink flow is a quick roll that slows down. Patterns live in `src/lib/haptics.js`. Android (Chrome, Brave) can only switch the motor on and off, so the feel comes from pulse length and rhythm, not strength. iPhone Safari 17.4+ has no vibration API, so a hidden switch control is toggled to get the system tick (each pattern becomes a spaced series of ticks). Desktop browsers don't vibrate. Settings → Look and feel has a "Try haptics" row.
+* **Ink and paper:** the opening animation draws 言 in brush ink on washi paper, racing at first and then slowing (each stroke takes a little longer than the last), while the red sun blooms in slow motion; it hands over to the app as soon as it has loaded. A reopen within a minute, reduced motion (Settings → Look and feel or the phone's setting) or a tap skips it. The same rhythm is used for the brand character on the welcome screen, brushed-in headings, the ink wash on Today's card and the red seal on finished screens (`src/ui/Ink.jsx`, `src/ink.css`). Brush outlines are KanjiVG strokes given a pen-pressure width, then revealed by a mask that draws the centre line.
+* **Still dock:** the page itself never scrolls; the content scrolls inside a fixed container (`.app-scroll`). Browser toolbars only hide and return when the document scrolls, which used to resize the screen under the dock.
 * **Sentence practice:** mixed exercises from the example sentences of cards you have started: match words, pick the meaning, fill the gap, choose the right form of a verb or adjective (or the sentence that matches the English), and build the Japanese from tiles. Every sentence is segmented against your decks (`src/lib/lexicon.js`). A sentence is only used when every word is in one of your decks and at most four words, forms or grammar points are not learned yet; those get a small English gloss above them. Grammar counts as learned once its lesson is done. Tap any word for a popup with reading, meaning, the weakest kanji's story, and a speaker button. Limits: roughly two thirds of Kaishi's sentences are fully explainable; early on, before the grammar lessons are done, many words show glosses and some sentences are skipped; particle-swap questions are deliberately not generated because the wrong particle can still make a valid sentence.
 * **Listening:** by default cards read the word when they appear and the example sentence when you reveal the answer. Settings → Listening and speaking lets you read the word on card open, with the answer, or never, and the sentence with the answer or never. Without recordings the phone's Japanese voice is used. If the device has no Japanese voice the app stays silent instead of reading Japanese with the wrong voice; Settings explains how to install one.
 * **Pronunciation check:** the microphone button on a card listens through the browser's speech recognition (ja-JP) and compares what it heard with the word or sentence, character by character, with a score. Kanji written in kana by the recogniser still count when the reading is known. Limits: Chrome/Android sends the audio to Google's recogniser, so it needs a connection; Safari and installed iPhone apps may not allow recognition at all, in which case the sheet falls back to recording you so you can compare by ear.
@@ -74,12 +77,12 @@ Settings → Backup and import (or the button on Today). Pick the `.apkg`. Parsi
 ```
 npm install
 npm run dev        # local
-npm test           # unit tests (568)
+npm test           # unit tests (593)
 npm run build
 node scripts/make-icons.mjs   # regenerate icons
 node scripts/build-strokes.mjs # regenerate public/strokes from KanjiVG
 # browser tests (need Chromium; start `npx vite preview --port 4173` first)
-node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud, sentences, layout, settings-prefs, lessons2, recall, reader, v46
+node tests/e2e/flow.mjs   # also: onboarding, import, import2, practice, writing, audio, offline, cloud, sentences, layout, settings-prefs, lessons2, recall, reader, v46, v47, v48
 ```
 
 Keyboard in a study session: Space = show answer / Good, 1–4 = grade, Z = undo.

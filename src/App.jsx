@@ -3,13 +3,14 @@ import { Store, idbBackend } from "./lib/store.js";
 import { SyncController } from "./lib/syncController.js";
 import { supabase, cloudConfigured } from "./lib/supabase.js";
 import { supabaseRemote } from "./lib/sync.js";
+import { withAutoSetup } from "./lib/cloudSetup.js";
 import { getSession, onAuthChange, signOut } from "./lib/auth.js";
 import { knownKanjiSet } from "./lib/personal.js";
-import { setHaptics, tick, onIOS, canHaptic } from "./lib/haptics.js";
+import { setHaptics, tick, toggleOn, toggleOff, onIOS, canHaptic } from "./lib/haptics.js";
 import { setAudioPrefs, unlockAudio } from "./lib/audio.js";
 import { lockScroll } from "./lib/scrollLock.js";
 import { applyKanjiFont } from "./lib/fonts.js";
-import { AppCtx, PauseCtx, ConfirmSheet, Toasts, useToasts, Banner } from "./ui/common.jsx";
+import { AppCtx, PauseCtx, ConfirmSheet, Toasts, useToasts, Banner, scrollToTop } from "./ui/common.jsx";
 import { Icon } from "./ui/icons.jsx";
 import { Auth } from "./ui/Auth.jsx";
 import { Onboarding } from "./ui/Onboarding.jsx";
@@ -49,7 +50,8 @@ const Tabs = memo(function Tabs({ tab }) {
 function createRuntime() {
   const store = new Store(idbBackend());
   const sessionRef = { current: null };
-  const sync = new SyncController(store, () => (cloudConfigured && sessionRef.current ? supabaseRemote(supabase) : null));
+  const remote = cloudConfigured ? withAutoSetup(supabaseRemote(supabase)) : null;
+  const sync = new SyncController(store, () => (remote && sessionRef.current ? remote : null));
   return { store, sync, sessionRef };
 }
 
@@ -147,7 +149,7 @@ export default function App() {
     if (window.history.state && window.history.state.nt) window.history.back();
     else dismissOverlay();
   }, [dismissOverlay]);
-  const go = useCallback((t) => { setTab(t); window.scrollTo(0, 0); }, []);
+  const go = useCallback((t) => { setTab(t); scrollToTop(); }, []);
   useEffect(() => {
     document.body.style.overflow = overlay ? "hidden" : "";
   }, [overlay]);
@@ -224,6 +226,7 @@ export default function App() {
   const themeSetting = store.settings.theme;
   useEffect(() => {
     document.documentElement.dataset.theme = themeSetting || "dark";
+    try { localStorage.setItem("nt-theme", themeSetting || "dark"); } catch { /* the opening animation falls back to dark */ }
     const apply = () => {
       const light = themeSetting === "light" || (themeSetting === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
       document.querySelector('meta[name="theme-color"]')?.setAttribute("content", light ? "#fbf7f3" : "#151413");
@@ -243,7 +246,10 @@ export default function App() {
     return () => { document.removeEventListener("pointerdown", once, true); document.removeEventListener("click", once, true); };
   }, []);
   const motionSetting = store.settings.motion;
-  useEffect(() => { document.documentElement.dataset.motion = motionSetting === "reduced" ? "reduced" : "full"; }, [motionSetting]);
+  useEffect(() => {
+    document.documentElement.dataset.motion = motionSetting === "reduced" ? "reduced" : "full";
+    try { localStorage.setItem("nt-motion", motionSetting === "reduced" ? "reduced" : "full"); } catch { /* ignore */ }
+  }, [motionSetting]);
   const kanjiFontSetting = store.settings.kanjiFont;
   useEffect(() => { applyKanjiFont(kanjiFontSetting || "mincho"); }, [kanjiFontSetting]);
 
@@ -254,6 +260,8 @@ export default function App() {
     const h = (e) => {
       const el = e.target instanceof Element ? e.target.closest(sel) : null;
       if (!el || el.disabled || el.getAttribute("aria-disabled") === "true" || el.closest('[data-haptic="none"]')) return;
+      // a switch rises when it turns on and falls when it turns off; the state is read before the tap changes it
+      if (el.getAttribute("role") === "switch") { el.getAttribute("aria-checked") === "true" ? toggleOff() : toggleOn(); return; }
       tick();
     };
     // iPhone only plays the system tick from a completed tap; Android is quicker on press.
@@ -282,13 +290,13 @@ export default function App() {
   if (phase === "loading") return <Splash />;
   if (phase === "fatal") {
     return (
-      <div className="welcome">
+      <div className="screen"><div className="welcome">
         <h1>Couldn't open local storage</h1>
         <p className="dim">The browser blocked access to its storage (private browsing or a full disk can cause this). Try a normal window, or free up space.</p>
         <pre className="card small" style={{ whiteSpace: "pre-wrap" }}>{String(fatal?.message || fatal)}</pre>
         <button className="btn btn-primary btn-lg" onClick={() => window.location.reload()}>Try again</button>
         <button className="btn btn-soft" onClick={resetCaches}>Reload with a fresh copy</button>
-      </div>
+      </div></div>
     );
   }
 
@@ -298,12 +306,14 @@ export default function App() {
   } else if (pulling) {
     body = <Splash text="Loading your data…" />;
   } else if (!store.settings.onboarded) {
-    body = <div className="screen"><Onboarding store={store} onFinish={() => { setTab("home"); window.scrollTo(0, 0); }} onSignIn={() => open({ type: "auth" })} /></div>;
+    body = <div className="screen"><Onboarding store={store} onFinish={() => { setTab("home"); scrollToTop(); }} onSignIn={() => open({ type: "auth" })} /></div>;
   } else {
     body = (
       <div className="app" inert={overlay ? "" : undefined} aria-hidden={overlay ? "true" : undefined}>
-        {store.saveError && <div style={{ position: "sticky", top: 0, zIndex: 40, padding: 8 }}><Banner kind="err" icon="warn">Can't save to this device (storage full or blocked). Export a backup from Settings.</Banner></div>}
-        <PauseCtx.Provider value={!!overlay}><Tabs tab={tab} /></PauseCtx.Provider>
+        <div className="app-scroll">
+          {store.saveError && <div style={{ position: "sticky", top: 0, zIndex: 40, padding: 8 }}><Banner kind="err" icon="warn">Can't save to this device (storage full or blocked). Export a backup from Settings.</Banner></div>}
+          <PauseCtx.Provider value={!!overlay}><Tabs tab={tab} /></PauseCtx.Provider>
+        </div>
         <nav className="nav" aria-label="Main">
             <div className="nav-inner" style={{ "--i": Math.max(0, TABS.findIndex((t) => t.id === tab)) }}>
               <span className="nav-pill" aria-hidden="true" />

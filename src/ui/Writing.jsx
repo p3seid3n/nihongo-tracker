@@ -56,7 +56,7 @@ export function WritePad({ char, title, sub, initialMode = "trace", nextLabel = 
   useEffect(() => {
     if (finished && !reported.current) {
       reported.current = true;
-      hap.success();
+      hap.lesson();
       onFinish?.({ mistakes, hints, ms: Date.now() - started.current, strokes: total });
     }
   }, [finished]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -112,10 +112,10 @@ export function WritePad({ char, title, sub, initialMode = "trace", nextLabel = 
     const r = checkStroke(user, models, k, { leniency: mode === "trace" ? 1.15 : 1 });
     if (r.ok) {
       setDone(k + 1); setMisses(0); setHint(false); setMsg("");
-      hap.snap();
+      hap.stroke();
       return;
     }
-    hap.bad();
+    hap.wrong();
     setMistakes((m) => m + 1);
     const m = misses + 1;
     setMisses(m);
