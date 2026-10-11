@@ -1,13 +1,13 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Icon } from "./icons.jsx";
-import { Banner, Stepper, Switch, useApp, plural, fmtNum } from "./common.jsx";
+import { Banner, Seg, Stepper, Switch, useApp, plural, fmtNum } from "./common.jsx";
 import { parseApkg, applyImport } from "../lib/importer/apkg.js";
 import { loadSQL } from "../lib/importer/sqljs.js";
 import { planAudio, extractAudio } from "../lib/importer/media.js";
 import { putClip, addAudioInfo } from "../lib/audio.js";
 
 const PHASES = { unzip: "Unpacking the file", open: "Starting the database engine", read: "Reading your cards", done: "Done" };
-const KINDS = [{ v: "kanji", l: "Kanji" }, { v: "vocab", l: "Vocabulary" }, { v: "kana", l: "Kana" }];
+const KINDS = [{ value: "kanji", label: "Kanji" }, { value: "vocab", label: "Vocabulary" }, { value: "kana", label: "Kana" }];
 
 export function ImportWizard({ onClose, onOpen }) {
   const { store, toast } = useApp();
@@ -140,9 +140,7 @@ export function ImportWizard({ onClose, onOpen }) {
                   </div>
                   {s.include && (
                     <>
-                      <div className="seg" role="group" aria-label="Deck type">
-                        {KINDS.map((k) => <button key={k.v} aria-pressed={s.kind === k.v} onClick={() => setSel({ ...sel, [d.id]: { ...s, kind: k.v } })}>{k.l}</button>)}
-                      </div>
+                      <Seg label="Deck type" value={s.kind} options={KINDS} onChange={(kind) => setSel({ ...sel, [d.id]: { ...s, kind } })} />
                       {d.started === 0 ? (
                         <div className="stack" style={{ gap: 8 }}>
                           <div className="spread">
@@ -206,7 +204,7 @@ export function ImportWizard({ onClose, onOpen }) {
             <h1>Imported {fmtNum(added)} cards</h1>
             {audioDone && <p className="dim">{audioDone.error ? "The audio couldn't be saved, so cards will use the built-in voice." : `${fmtNum(audioDone.stored)} audio recordings saved${audioDone.failed ? `, ${fmtNum(audioDone.failed)} could not be read` : ""}.`}</p>}
             <p className="dim">Your decks are ready. Cards you marked as known will come back for a quick check over the next days.</p>
-            {pausedDecks.length > 0 && <p className="hint">The built-in {pausedDecks.join(" and ")} deck{pausedDecks.length > 1 ? "s are" : " is"} paused so you don't study the same characters twice. You can turn {pausedDecks.length > 1 ? "them" : "it"} back on in Cards.</p>}
+            {pausedDecks.length > 0 && <p className="hint">The built-in {pausedDecks.join(" and ")} deck{pausedDecks.length > 1 ? "s are" : " is"} paused so you don't study the same characters twice. You can turn {pausedDecks.length > 1 ? "them" : "it"} back on under Settings → Cards and decks.</p>}
             <div className="stack" style={{ width: "100%", marginTop: 24 }}>
               <button className="btn btn-primary btn-lg btn-block" onClick={() => onOpen({ type: "study" })}>Start studying</button>
               <button className="btn btn-soft btn-block" onClick={onClose}>Back to library</button>

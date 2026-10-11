@@ -595,3 +595,26 @@ a.btn { text-decoration: none; }
 .feedback-inline .small { color: var(--text); }
 .guess-box { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 .guess-note { text-align: center; }
+
+/* in-app scroll areas scroll without a visible bar (the app is a PWA, the thumb only adds noise) */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* ---------- daily plan ---------- */
+.step .grow { min-width: 0; }
+.step .sub { text-wrap: pretty; overflow-wrap: break-word; }
+.step .title { text-wrap: balance; }
+.step-min { font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.legend .dot.done { background: var(--primary); }
+.legend .dot.plan { background: color-mix(in srgb, var(--primary) 35%, transparent); }
+.week { gap: 12px; }
+.week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week-strip .wd { height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 0.8125rem; font-weight: 650; background: var(--s3); color: var(--dim); max-width: 44px; justify-self: center; width: 100%; }
+.week-strip .wd.on { background: var(--sage-c); color: var(--sage); }
+.week-strip .wd.today { box-shadow: 0 0 0 2px var(--primary); color: var(--text); }
+.week-strip .wd.on.today { color: var(--sage); }
+.week-strip .wd.future { opacity: 0.55; }
+.menu-icon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: var(--s3); color: var(--primary); flex: none; }
+.step:disabled { opacity: 0.5; cursor: default; }

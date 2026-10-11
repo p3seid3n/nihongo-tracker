@@ -19,6 +19,10 @@ await page.waitForSelector("text=/Found \\d+ decks?/", { timeout: 120000 });
 log("parsed in ms:", Date.now() - t0);
 await shot(page, "31-import-choose");
 log((await page.innerText(".lesson-body")).slice(0, 900));
+// the deck type switch is the shared segmented control: its pill follows the pressed button
+const segs = await page.$$eval(".lesson-body .seg", (els) => els.map((e) => ({ n: e.style.getPropertyValue("--n"), i: e.style.getPropertyValue("--i"), pressed: [...e.querySelectorAll("button")].findIndex((b) => b.getAttribute("aria-pressed") === "true"), count: e.querySelectorAll("button").length })));
+console.log(segs.length && segs.every((x) => x.n === String(x.count) && x.i === String(x.pressed) && x.pressed >= 0) ? "ok:" : "FAIL:", "import wizard type switch uses the segmented control", JSON.stringify(segs));
+if (!segs.length || !segs.every((x) => x.n === String(x.count) && x.i === String(x.pressed) && x.pressed >= 0)) process.exitCode = 1;
 // say: first 315 RRTK known, 41 Kaishi known (stepper: click + until value)
 const cards = page.locator(".lesson-body .card");
 const n = await cards.count();

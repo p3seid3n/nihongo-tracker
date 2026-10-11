@@ -16,7 +16,7 @@ import { Onboarding } from "./ui/Onboarding.jsx";
 import { Home } from "./ui/Home.jsx";
 import { Study } from "./ui/Study.jsx";
 import { Learn, LessonPlayer, PracticePlayer } from "./ui/Learn.jsx";
-import { Library } from "./ui/Library.jsx";
+import { Practice } from "./ui/Practice.jsx";
 import { ImportWizard } from "./ui/ImportWizard.jsx";
 import { WritingPlayer } from "./ui/Writing.jsx";
 import { Reader } from "./ui/Reader.jsx";
@@ -28,7 +28,7 @@ import { Settings } from "./ui/Settings.jsx";
 const TABS = [
   { id: "home", label: "Today", icon: "home" },
   { id: "learn", label: "Grammar", icon: "learn" },
-  { id: "cards", label: "Cards", icon: "cards" },
+  { id: "practice", label: "Practice", icon: "play" },
   { id: "stats", label: "Stats", icon: "stats" },
   { id: "settings", label: "Settings", icon: "settings" },
 ];
@@ -39,7 +39,7 @@ const Tabs = memo(function Tabs({ tab }) {
     <>
       {tab === "home" && <Home />}
       {tab === "learn" && <Learn />}
-      {tab === "cards" && <Library />}
+      {tab === "practice" && <Practice />}
       {tab === "stats" && <Stats />}
       {tab === "settings" && <Settings />}
     </>

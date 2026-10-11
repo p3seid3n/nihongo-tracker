@@ -38,6 +38,8 @@ export const DEFAULT_SETTINGS = {
   effortBudget: 200, // daily effort points (a review costs 1, a recall review 3, see effort.js)
   autoThrottle: true, // fewer new cards while a backlog builds up or recall drops
   pretest: false, // guess before the first look at a new card
+  grammarEvery: 7, // days between new grammar lessons (the daily plan)
+  grammarEarlyFast: true, // the first, easy lessons open about three times faster
   fsrsW: null, // personal FSRS weights fitted to your own reviews (null = the defaults)
   fsrsFit: null, // what the last fit found: { at, n, before, after, better }
   u: 0,

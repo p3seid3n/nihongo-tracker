@@ -1,5 +1,5 @@
 // Full-screen views must fit the screen: no whole-page scrolling, top bar and buttons stay put, only content scrolls.
-import { launch, shot, BASE } from "./lib.mjs";
+import { launch, shot, BASE, openCards } from "./lib.mjs";
 const ok = (c, m) => { console.log(c ? "ok:" : "FAIL:", m); if (!c) process.exitCode = 1; };
 const LONG = "Younger brothers are always more prone to mischief. Mine, you can almost see the little horns on him and the dollar signs on his eyes when he comes up with a new scheme to get out of doing his chores, which he does several times a day, every single day of the week, including holidays, birthdays and the days when the whole family is sick.";
 
@@ -17,7 +17,7 @@ for (const [w, h] of [[390, 844], [360, 560], [320, 480]]) {
       "lay.c2": { f: "泊", r: "", m: "stay overnight", o: 1, x: { story: "short" } },
     });
   }, LONG);
-  await page.click("nav >> text=Cards");
+  await openCards(page);
   await page.click("text=Layout test deck");
   await page.click(".sheet >> text=Study");
   await page.waitForTimeout(600);
@@ -25,6 +25,7 @@ for (const [w, h] of [[390, 844], [360, 560], [320, 480]]) {
   await page.waitForTimeout(700);
   const probe = async (label) => {
     // try to scroll the page as a whole
+    const y0 = await page.evaluate(() => window.scrollY); // the page behind may have been scrolled to reach the deck
     await page.mouse.move(w / 2, h / 2);
     await page.mouse.wheel(0, 600);
     await page.waitForTimeout(150);
@@ -42,7 +43,7 @@ for (const [w, h] of [[390, 844], [360, 560], [320, 480]]) {
         docOverflow: document.documentElement.scrollHeight - window.innerHeight,
       };
     });
-    ok(r.winScroll === 0 && r.fsScroll === 0, `${w}x${h} ${label}: page does not scroll (${JSON.stringify({ win: r.winScroll, fs: r.fsScroll })})`);
+    ok(r.winScroll === y0 && r.fsScroll === 0, `${w}x${h} ${label}: page does not scroll (${JSON.stringify({ win: r.winScroll, fs: r.fsScroll })})`);
     ok(r.fsOverflow <= 1, `${w}x${h} ${label}: nothing hangs below the screen (${r.fsOverflow}px)`);
     ok(r.topVisible, `${w}x${h} ${label}: top bar stays visible (y=${r.topY})`);
     ok(r.btnVisible, `${w}x${h} ${label}: buttons stay visible (bottom ${r.btnBottom} of ${r.vh})`);

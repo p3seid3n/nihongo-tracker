@@ -35,7 +35,7 @@ await page.waitForSelector(".plan-hero");
 await page.waitForSelector(".effort");
 await shot(page, "80-home-effort");
 const effortTxt = await page.locator(".effort").innerText();
-ok(/points/.test(effortTxt), "home shows the effort meter: " + effortTxt.replace(/\n/g, " | "));
+ok(/still planned/.test(effortTxt) && /budget/.test(effortTxt), "home shows the effort meter: " + effortTxt.replace(/\n/g, " | "));
 const stepTxt = await page.locator(".step").first().innerText();
 ok(/recall cards/.test(stepTxt), "plan counts recall cards: " + stepTxt.replace(/\n/g, " | "));
 
@@ -136,6 +136,6 @@ await page.waitForSelector(".plan-hero");
 await page.waitForTimeout(300);
 await shot(page, "87-home-after");
 const after = await page.locator(".effort").innerText();
-ok(/points/.test(after), "effort after studying: " + after.replace(/\n/g, " | "));
+ok(/[1-9]\d* done/.test(after), "effort after studying: " + after.replace(/\n/g, " | "));
 ok(errors.length === 0, "no console errors " + errors.join(" / "));
 await browser.close();

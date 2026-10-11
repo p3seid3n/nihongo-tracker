@@ -1,4 +1,4 @@
-import { launch, shot, BASE } from "./lib.mjs";
+import { launch, shot, BASE, settingsPage, openCards } from "./lib.mjs";
 const FILE = process.env.APKG || "/mnt/user-data/uploads/All_decks-20261004095235.apkg";
 const log = (...a) => console.log(...a);
 let failed = false;
@@ -42,15 +42,15 @@ ok(/audio recordings saved/.test(doneText), "import reports saved recordings: " 
 await page.click("text=Back to library");
 
 // ---- settings shows the audio
-await page.click("nav >> text=Settings");
-await page.waitForSelector("text=Listening and speaking");
+await settingsPage(page, "sound");
+await page.waitForSelector("text=Downloaded audio");
 await page.locator("text=Downloaded audio").scrollIntoViewIfNeeded();
 const aTxt = await page.locator(".list-item:has-text('Downloaded audio')").innerText();
 ok(/[\d,]+ clips/.test(aTxt), "Settings lists downloaded audio: " + aTxt.replace(/\n/g, " "));
 await shot(page, "a3-settings-audio");
 
 // ---- study Kaishi: native audio is used, not synthesized speech
-await page.click("nav >> text=Cards");
+await openCards(page);
 await page.click("button.card:has-text('Kaishi')");
 await page.click(".sheet button:has-text('Study')");
 await page.waitForSelector(".flash");
@@ -118,14 +118,14 @@ ok(await page.locator(".flash").count() === 1, "study session survived (Escape o
 // ---- remove audio: fallback to the built-in voice
 await page.click(".study-top button[aria-label='Close session']");
 await page.waitForTimeout(500);
-await page.click("nav >> text=Settings");
+await settingsPage(page, "sound");
 await page.locator("text=Downloaded audio").scrollIntoViewIfNeeded();
 await page.click(".list-item:has-text('Downloaded audio') button:has-text('Remove')");
 await page.click(".sheet button:has-text('Remove')");
 await page.waitForSelector("text=Native audio");
 ok(true, "audio removed");
 await page.evaluate(() => { window.__spoken.length = 0; window.__played.length = 0; });
-await page.click("nav >> text=Cards");
+await openCards(page);
 await page.click("button.card:has-text('Kaishi')");
 await page.click(".sheet button:has-text('Study')");
 await page.waitForSelector(".flash");

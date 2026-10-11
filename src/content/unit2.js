@@ -37,7 +37,7 @@ export const unit2 = [
       },
       {
         h: "です is not just a polite だ",
-        p: ["です only shows politeness; it doesn't change the tense. For past, use でした. And don't put です after a verb: 食べますです is wrong."],
+        p: ["です only adds politeness; it has no meaning of its own. After a noun, the past is でした; after an i-adjective, the adjective itself carries the tense (忙[いそが]しかったです). And don't put です after a verb: 食べますです is wrong."],
         ex: [["昨日[きのう]|は|忙[いそが]しかった|です", "Yesterday was busy."]],
       },
     ],
@@ -46,7 +46,7 @@ export const unit2 = [
       ["昨日[きのう]|映画[えいが]|を|見[み]ました*", "I watched a movie yesterday.", "", "見[み]ます,見[み]ません,見[み]ました,見[み]ませんでした"],
       ["友達[ともだち]|は|来[き]ません*", "My friend isn't coming.", "", "来[き]ます,来[き]ません,来[き]ました,来[き]ませんでした"],
     ],
-    spot: [["食[た]べません", "食[た]べないです", "食[た]べますじゃない", "~Polite negative of a verb: 〜ません."]],
+    spot: [["食[た]べません", "食[た]べますない", "食[た]べますじゃない", "~Polite negative of a verb: 〜ません."]],
     conj: [{ pos: "verb", form: "polite", n: 2 }, { pos: "verb", form: "polite-neg", n: 1 }, { pos: "verb", form: "polite-past", n: 1 }, { pos: "verb", form: "polite-past-neg", n: 1 }],
     gens: ["obj-verb:polite:aff,neg,past,pastneg", "go-to:polite", "at-place:polite", "adj-desu:polite"],
     vocab: ["taberu", "nomu", "miru", "iku", "kuru", "benkyou"],
@@ -107,7 +107,7 @@ export const unit2 = [
       },
       {
         h: "Question words",
-        p: ["Question words take the place of the thing you're asking about. They never take は; use が or the usual particle (を, に, で…) instead."],
+        p: ["Question words take the place of the thing you're asking about. A question word is not used as the plain topic, so it normally doesn't take は; use が or the usual particle (を, に, で…) instead."],
         table: {
           head: ["Word", "Meaning"],
           rows: [["何 (なに/なん)", "what"], ["誰 (だれ)", "who"], ["どこ", "where"], ["いつ", "when"], ["どう", "how"], ["どれ", "which one"], ["いくつ", "how many"]],
@@ -160,7 +160,7 @@ export const unit2 = [
       },
       {
         h: "Linking descriptions",
-        p: ["I-adjectives link with **〜くて**, nouns and na-adjectives with **で**."],
+        p: ["I-adjectives link with **〜くて** (いい → よくて), nouns and na-adjectives with **で**."],
         ex: [
           ["この|部屋[へや]|は|大[おお]きくて|きれい|です", "This room is big and clean."],
           ["彼[かれ]|は|学生[がくせい]|で|友達[ともだち]|は|先生[せんせい]|です", "He is a student and my friend is a teacher."],
@@ -193,7 +193,7 @@ export const unit2 = [
       },
       {
         h: "けど and が: but",
-        p: ["**けど** (casual) and **が** (polite) join two contrasting clauses: “…, but …”."],
+        p: ["**けど** (conversational; also used after です/ます) and **が** (more formal) join two contrasting clauses: “…, but …”."],
         ex: [
           ["安[やす]い|けど|美味[おい]しくない", "It's cheap, but not tasty."],
           ["日本語[にほんご]|は|難[むずか]しい|が|面白[おもしろ]い", "Japanese is difficult, but interesting."],
@@ -210,8 +210,8 @@ export const unit2 = [
     ],
     cloze: [
       ["忙[いそが]しい|から*|行[い]かない", "I'm busy, so I won't go.", "から gives the reason.", "から,けど,のに,と"],
-      ["安[やす]い|けど*|美味[おい]しくない", "It's cheap, but not tasty.", "けど = but", "から,けど,のに,し"],
-      ["頑張[がんば]った|のに*|ダメ|だった", "Even though I tried hard, it didn't work.", "のに = despite", "から,けど,のに,し"],
+      ["安[やす]い|けど*|美味[おい]しくない", "It's cheap, but not tasty.", "けど = but", "けど,から,ので,と"],
+      ["頑張[がんば]った|のに*|ダメ|だった", "Even though I tried hard, it didn't work.", "のに = despite", "のに,から,し,と"],
       ["雨[あめ]|な*|ので|家[いえ]|に|いる", "It's raining, so I'll stay home.", "Noun + なので", "な,の,だ,で"],
     ],
     vocab: [],
@@ -222,7 +222,7 @@ export const unit2 = [
     blurb: "Is doing, and is in the state of.",
     pages: [
       {
-        h: "Is doing / has been done",
+        h: "Is doing / is in a resulting state",
         p: [
           "Add **いる** to the te-form. For actions that take time it means “is doing”: 食べている (is eating). For verbs of change it means the **resulting state**: 結婚している (is married), 知っている (knows), 住んでいる (lives).",
           "Negative: 〜ていない. Past: 〜ていた. Casual speech drops the い: 〜てる.",
@@ -236,7 +236,7 @@ export const unit2 = [
       },
       {
         h: "Intransitive states",
-        p: ["With intransitive verbs, 〜ている describes how things are right now: the door **is open**, the light **is on**. Compare transitive 〜てある later on."],
+        p: ["With intransitive verbs, 〜ている describes how things are right now: the door **is open**, the light **is on**."],
         ex: [
           ["窓[まど]|が|開[あ]いている", "The window is open."],
           ["電気[でんき]|が|ついている", "The light is on."],
@@ -260,7 +260,7 @@ export const unit2 = [
         h: "Making the potential",
         p: [
           "Ru-verbs: drop る, add **られる** (食べる → 食べられる). U-verbs: change the last sound to the え-row and add る (飲む → 飲める, 書く → 書ける, 話す → 話せる). Irregular: する → **できる**, 来る → 来られる (こられる).",
-          "Potential verbs are ru-verbs, so they conjugate that way: 食べられない (can't eat), 読めた (could read).",
+          "Potential verbs are ru-verbs, so they conjugate that way: 食べられない (can't eat), 読めた (could read). In casual speech many people drop the ら (食べれる, 見れる); you will hear it, but write 食べられる.",
         ],
         ex: [
           ["日本語[にほんご]|が|話[はな]せる", "I can speak Japanese."],
@@ -280,7 +280,7 @@ export const unit2 = [
     ],
     cloze: [
       ["日本語[にほんご]|が*|話[はな]せる", "I can speak Japanese.", "The thing you can do takes が.", "が,を,に,で"],
-      ["魚[さかな]|が|食[た]べられる*", "I can eat fish.", "Ru-verb: 〜られる", "食[た]べられる,食[た]べれる,食[た]べる,食[た]べさせる"],
+      ["魚[さかな]|が|食[た]べられる*", "I can eat fish.", "Ru-verb: 〜られる", "食[た]べられる,食[た]べらる,食[た]べる,食[た]べさせる"],
     ],
     conj: [{ pos: "verbRu", form: "potential", n: 2 }, { pos: "verbU", form: "potential", n: 3 }, { pos: "verb", form: "potential", n: 1 }],
     vocab: ["hanasu", "yomu", "taberu", "nomu", "kaku"],
@@ -292,7 +292,7 @@ export const unit2 = [
     pages: [
       {
         h: "なる: become",
-        p: ["Noun or na-adjective + **に** + なる. I-adjective: replace い with **く** + なる. Verbs: 〜ように + なる for gradual change."],
+        p: ["Noun or na-adjective + **に** + なる. I-adjective: replace い with **く** + なる. Verbs: 〜ようになる means “come to do / become able to do” (日本語[にほんご]が話[はな]せるようになった: I've become able to speak Japanese)."],
         ex: [
           ["=先生[せんせい]|に|なる", "become a teacher"],
           ["元気[げんき]|に|なった", "(I) got better."],
@@ -346,9 +346,9 @@ export const unit2 = [
       },
     ],
     cloze: [
-      ["安[やす]ければ*|買[か]う", "If it's cheap, I'll buy it.", "I-adjective: ければ", "安[やす]ければ,安[やす]かったら,安[やす]いと,安[やす]いなら"],
-      ["雨[あめ]|が|降[ふ]ったら*|行[い]かない", "If it rains, I won't go.", "Past form + ら", "降[ふ]ったら,降[ふ]れば,降[ふ]ると,降[ふ]るなら"],
-      ["春[はる]|に|なる|と*|暖[あたた]かく|なる", "When spring comes, it gets warm.", "と = natural result", "と,ば,たら,なら"],
+      ["安[やす]ければ*|買[か]う", "If it's cheap, I'll buy it.", "I-adjective: ければ", "安[やす]ければ,安[やす]いは,安[やす]くて,安[やす]いで"],
+      ["雨[あめ]|が|降[ふ]ったら*|行[い]かない", "If it rains, I won't go.", "Past form + ら", "降[ふ]ったら,降[ふ]った,降[ふ]るで,降[ふ]りに"],
+      ["春[はる]|に|なる|と*|暖[あたた]かく|なる", "When spring comes, it gets warm.", "と = natural result", "と,に,を,は"],
     ],
     conj: [{ pos: "verb", form: "ba", n: 2 }, { pos: "verb", form: "tara", n: 2 }, { pos: "iadj", form: "ba", n: 1 }],
     vocab: [],
@@ -410,13 +410,13 @@ export const unit2 = [
       },
       {
         h: "ほしい: want a thing",
-        p: ["**ほしい** is an i-adjective for wanting an object. The thing wanted takes が."],
+        p: ["**ほしい** is an i-adjective for wanting an object. The thing wanted usually takes が (は is possible when you contrast or make it the topic)."],
         ex: [["新[あたら]しい|車[くるま]|が|ほしい", "I want a new car."]],
       },
       {
         h: "Let's: the volitional",
         p: [
-          "Ru-verbs: drop る + **よう** (食べよう). U-verbs: change to the お-row + う (行こう, 飲もう). する → しよう, 来る → 来よう. Polite: **〜ましょう** (行きましょう). Add か to offer: 食べましょうか?",
+          "Ru-verbs: drop る + **よう** (食べよう). U-verbs: change to the お-row + う (行こう, 飲もう). する → しよう, 来[く]る → 来[こ]よう. Polite: **〜ましょう** (行きましょう). Add か to offer: 食べましょうか?",
         ],
         ex: [
           ["一緒[いっしょ]|に|食[た]べよう", "Let's eat together."],
@@ -427,7 +427,7 @@ export const unit2 = [
     cloze: [
       ["私[わたし]|は|日本[にほん]|へ|行[い]きたい*", "I want to go to Japan.", "", "行[い]きたい,行[い]きます,行[い]きたく,行[い]こう"],
       ["魚[さかな]|は|食[た]べたくない*", "I don't want to eat fish.", "", "食[た]べたくない,食[た]べたい,食[た]べない,食[た]べたかった"],
-      ["新[あたら]しい|車[くるま]|が*|ほしい", "I want a new car.", "The thing wanted takes が.", "が,を,に,は"],
+      ["新[あたら]しい|車[くるま]|が*|ほしい", "I want a new car.", "The thing wanted takes が.", "が,に,で,へ"],
     ],
     conj: [{ pos: "verb", form: "tai", n: 3 }, { pos: "verb", form: "volitional", n: 3 }],
     vocab: [],
@@ -439,7 +439,7 @@ export const unit2 = [
     pages: [
       {
         h: "と: close the quote",
-        p: ["Put the quoted sentence, in its original form, before **と** and add 言う (say), 思う (think), 聞く (hear) or 知る (know). Casual speech shortens と to **って**."],
+        p: ["Put the quoted sentence, in its original form, before **と** and add 言う (say), 思う (think), 聞く (hear) or 考える (consider). Casual speech shortens と to **って**."],
         ex: [
           ["彼[かれ]|は|行[い]く|と|言[い]った", "He said he'd go."],
           ["明日[あした]|は|雨[あめ]|だ|と|思[おも]う", "I think it will rain tomorrow."],
@@ -490,7 +490,7 @@ export const unit2 = [
     ],
     cloze: [
       ["お|寿司[すし]|を|食[た]べて*|みた", "I tried eating sushi.", "てみる", "食[た]べて,食[た]べた,食[た]べる,食[た]べない"],
-      ["先[さき]に|宿題[しゅくだい]|を|しておく*", "I'll do my homework in advance.", "ておく", "しておく,してみる,してくる,している"],
+      ["先[さき]に|宿題[しゅくだい]|を|しておく*", "I'll do my homework in advance.", "ておく", "しておく,してみる,しておいた,している"],
     ],
     vocab: [],
   },
@@ -543,8 +543,8 @@ export const unit2 = [
       {
         h: "Firmer forms",
         p: [
-          "**〜なさい**: a firm but polite instruction, often from parents and teachers. Stem + なさい.",
-          "**Command form**: ru-verbs → 〜ろ (食べろ), u-verbs → え-row (行け). Negative command: dictionary form + な (行くな). These are blunt; you'll mostly hear them in anime, sports and arguments.",
+          "**〜なさい**: a firm but gentle command, used by someone of higher standing (parents, teachers) to someone below them. Never use it to your superiors. Stem + なさい.",
+          "**Command form**: ru-verbs → 〜ろ (食べろ), u-verbs → え-row (行け). Irregular: する → しろ, 来[く]る → 来[こ]い. Negative command: dictionary form + な (行くな). These are blunt; you'll mostly hear them in anime, sports and arguments.",
         ],
         ex: [
           ["早[はや]く|寝[ね]なさい", "Go to sleep early. (firm)"],
@@ -601,7 +601,7 @@ export const unit2 = [
       {
         h: "Dropping and shortening",
         p: [
-          "Among friends, particles like は, が and を are often dropped, and endings shrink: **〜ている → 〜てる**, **〜ては → 〜ちゃ**, **〜てしまう → 〜ちゃう**, **〜ければ → 〜きゃ**. Questions often lose か, and a rising tone does the work.",
+          "Among friends, particles like は, が and を are often dropped, and endings shrink: **〜ている → 〜てる**, **〜ては → 〜ちゃ**, **〜てしまう → 〜ちゃう**, **〜なければ → 〜なきゃ**. Questions often lose か, and a rising tone does the work.",
         ],
         ex: [
           ["何[なに]|してる|？", "What are you doing?"],
@@ -622,7 +622,7 @@ export const unit2 = [
     ],
     cloze: [
       ["何[なに]|して*|る|？", "What are you doing?", "〜ている → 〜てる", "して,した,する,しない"],
-      ["それ|いい|ね*", "That's nice.", "", "ね,よ,か,の"],
+      ["それ|いい|ね*", "That's nice, isn't it?", "ね = looking for agreement", "ね,か,の,を"],
       ["いい|じゃん*", "That's good, isn't it!", "", "じゃん,です,ます,だった"],
     ],
     vocab: [],

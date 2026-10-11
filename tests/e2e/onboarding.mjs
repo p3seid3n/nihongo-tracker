@@ -14,7 +14,7 @@ await shot(page, "04-time");
 await page.click("text=Continue");
 await shot(page, "05-known");
 await page.click("text=Start learning");
-await page.waitForSelector("text=Today's cards", { timeout: 10000 });
+await page.waitForSelector("text=Today's plan", { timeout: 10000 });
 await shot(page, "06-home");
 console.log("errors:", errors);
 await browser.close();

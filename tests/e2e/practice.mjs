@@ -38,8 +38,8 @@ async function runExercises(maxSteps = 120) {
 }
 
 // sentence reading
-await page.click("nav >> text=Grammar");
-await page.click("text=Sentence practice");
+await page.click("nav >> text=Practice");
+await page.click(".step:has-text('Sentence practice')");
 await page.waitForSelector(".q-instr, .match");
 await shot(page, "60-sentences");
 log("sentences finished:", await runExercises(), (await page.innerText("h1")));

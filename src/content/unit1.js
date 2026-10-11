@@ -144,7 +144,7 @@ export const unit1 = [
         h: "が answers a silent question",
         p: [
           "**が** identifies something. It picks one thing out of many and says “this is the one”. A good way to think of it: が always answers a question, spoken or not.",
-          "That is why question words like 誰 (who) and 何 (what) always take が, never は. The topic has to be something known; a question word is exactly what is unknown.",
+          "That is why a question word that is the subject of the sentence, like 誰 (who) or 何 (what), takes が and not は. The topic has to be something known; a question word is exactly what is unknown. (Question words can still take other particles: 何を, 誰に.)",
         ],
         ex: [
           ["誰[だれ]|が|学生[がくせい]|ですか", "Who is the student?"],
@@ -163,7 +163,7 @@ export const unit1 = [
         ],
       },
       {
-        h: "が with likes and wants",
+        h: "が with likes",
         p: ["Some words, like 好き (likable), mark the thing liked with が, not を. “I like dogs” is literally “as for me, dogs are likable”."],
         ex: [["私[わたし]|は|犬[いぬ]|が|好[す]き|です", "I like dogs."]],
       },
@@ -232,7 +232,7 @@ export const unit1 = [
         h: "I-adjectives end in い",
         p: [
           "I-adjectives such as 大きい (big), 高い (expensive), 美味しい (delicious) end in い. In plain speech they are already a full sentence: 大きい means “is big”. No だ needed.",
-          "In polite speech add です: 大きいです.",
+          "In polite speech put です after the plain form: 大きいです, 大きくないです, 大きかったです, 大きくなかったです. Do not change い to です (not 大きいでした).",
         ],
         ex: [
           ["この|車[くるま]|は|大[おお]きい", "This car is big."],
@@ -346,7 +346,7 @@ export const unit1 = [
         ex: [
           ["彼[かれ]|は|水[みず]|を|飲[の]まない", "He doesn't drink water."],
           ["友達[ともだち]|は|学校[がっこう]|へ|行[い]かない", "My friend doesn't go to school."],
-          ["私[わたし]|は|何[なに]も|買[か]わない", "I don't buy anything."],
+          ["私[わたし]|は|パン|を|買[か]わない", "I don't buy bread."],
         ],
       },
       {
@@ -367,7 +367,7 @@ export const unit1 = [
     gens: ["obj-verb:plain:neg,aff", "go-to:plain:neg,aff"],
     spot: [
       ["彼[かれ]は水[みず]を飲[の]まない", "彼[かれ]は水[みず]を飲[の]みない", "~U-verbs change the last sound to the あ-row: 飲む → 飲まない."],
-      ["私[わたし]は何[なに]も買[か]わない", "私[わたし]は何[なに]も買[か]あない", "~う-verbs use わ: 買わない."],
+      ["私[わたし]はパンを買[か]わない", "私[わたし]はパンを買[か]あない", "~う-verbs use わ: 買わない."],
     ],
     vocab: ["taberu", "nomu", "miru", "kau", "iku", "kuru"],
   },
@@ -427,7 +427,7 @@ export const unit1 = [
         h: "を marks the direct object",
         p: [
           "**を** (pronounced “o”) marks the thing a verb acts on: what you eat, read, watch, buy. Put it directly after the object.",
-          "Only transitive verbs (ones that act on something) take を.",
+          "Transitive verbs (ones that act on something) take を for the thing they act on. (A few motion verbs also use を, for example 家[いえ]を出[で]る, but start with the transitive rule.)",
         ],
         ex: [
           ["私[わたし]|は|パン|を|食[た]べる", "I eat bread."],
@@ -438,12 +438,12 @@ export const unit1 = [
       {
         h: "Objects can come first",
         p: [
-          "The verb must be last, but the other parts can move around because the particles tell you who is who. The usual order is: topic, time, place, object, verb.",
-          "When you drop the topic and the object is obvious, you can also drop を in casual speech. Keep it for now.",
+          "The verb must be last, but the other parts can move around because the particles tell you who is who. The usual order is: time and topic first (in either order: 昨日私は… or 私は昨日…), then place, object, verb.",
+          "In very casual speech people sometimes drop を (ご飯食べた). Keep it for now.",
         ],
         ex: [
           ["私[わたし]|は|毎日[まいにち]|コーヒー|を|飲[の]む", "I drink coffee every day."],
-          ["コーヒー|を|私[わたし]|は|毎日[まいにち]|飲[の]む", "I drink coffee every day.", "Same meaning, object moved to the front for emphasis."],
+          ["毎日[まいにち]|私[わたし]|は|コーヒー|を|飲[の]む", "I drink coffee every day.", "Time can also come first."],
         ],
       },
     ],
@@ -464,7 +464,7 @@ export const unit1 = [
       {
         h: "に: target, time and existence",
         p: [
-          "**に** marks a target: the place you go to, the person you meet, the time something happens, or the place where something exists.",
+          "**に** marks a target: the place you go to, the person you meet, the exact time something happens (七時に, 月曜日に; but not 昨日, 今日, 明日, 毎日), or the place where something exists.",
         ],
         ex: [
           ["私[わたし]|は|七時[しちじ]|に|起[お]きる", "I wake up at seven."],
@@ -561,7 +561,7 @@ export const unit1 = [
       },
       {
         h: "Sentence order",
-        p: ["The verb ends the sentence; the rest is flexible, because particles label each piece. A natural default: **time, topic, place, object, verb.**"],
+        p: ["The verb ends the sentence; the rest is flexible, because particles label each piece. A natural default: time and topic first (in either order), then place, object, verb."],
         ex: [["私[わたし]|は|昨日[きのう]|図書館[としょかん]|で|本[ほん]|を|読[よ]んだ", "Yesterday I read a book at the library."]],
       },
     ],
@@ -592,7 +592,7 @@ export const unit1 = [
         p: ["**の** links two nouns, the first describing the second: possession, type or origin. It can also stand in for a noun you've already mentioned."],
         ex: [
           ["=私[わたし]|の|本[ほん]", "my book"],
-          ["=日本語[にほんご]|の|先生[せんせい]", "a Japanese teacher"],
+          ["=日本語[にほんご]|の|先生[せんせい]", "a Japanese-language teacher (a teacher of Japanese)"],
           ["これ|は|田中[たなか]さん|の|です", "This is Tanaka's."],
         ],
       },
@@ -616,7 +616,7 @@ export const unit1 = [
         h: "の turns a sentence into an explanation",
         p: [
           "Adding **の** (casual) or **んです** (polite) to the end of a sentence gives it an explanatory tone: “it's that …”. In questions it softly asks for the reason.",
-          "Attach it to the plain form of the sentence. After nouns and na-adjectives use **な**: 学生**な**んです.",
+          "Attach it to the plain form of the sentence. When the sentence would end in noun/na-adjective + だ (present, positive), だ becomes **な**: 学生**な**んです. Everything else stays plain: 学生だったんです, 学生じゃないんです, 行かないんです.",
         ],
         ex: [
           ["どうして|行[い]かない|の", "Why aren't you going?"],
@@ -639,7 +639,7 @@ export const unit1 = [
     pages: [
       {
         h: "Turning adjectives into adverbs",
-        p: ["I-adjective: replace い with **く**. Na-adjective: add **に**. Some adverbs, such as とても (very) and ゆっくり (slowly), are already adverbs."],
+        p: ["I-adjective: replace い with **く** (いい becomes よく). Na-adjective: add **に**. Some adverbs, such as とても (very) and ゆっくり (slowly), are already adverbs."],
         ex: [
           ["=早[はや]く|起[お]きる", "wake up early"],
           ["=静[しず]かに|話[はな]す", "speak quietly"],
@@ -655,7 +655,7 @@ export const unit1 = [
         ex: [
           ["いい|天気[てんき]|です|ね", "Nice weather, isn't it?"],
           ["これ|は|美味[おい]しい|です|よ", "This is delicious, I tell you!"],
-          ["そう|です|ね", "That's right, isn't it."],
+          ["そう|です|ね", "That's right. / Yes, indeed."],
         ],
       },
     ],

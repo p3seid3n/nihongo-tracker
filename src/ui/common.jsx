@@ -267,3 +267,14 @@ export function fmtMinutes(ms) {
   const h = m / 60;
   return `${h < 10 ? h.toFixed(1).replace(/\.0$/, "") : Math.round(h)} h`;
 }
+
+/** A tappable row with an icon, used for the plan on Today and the list on Practice. */
+export function Step({ icon, title, sub, onClick, done, disabled, badge }) {
+  return (
+    <button className={`step ${done ? "done" : ""}`} onClick={onClick} disabled={disabled}>
+      <span className="step-icon"><Icon name={done ? "check" : icon} /></span>
+      <span className="grow"><div className="title">{title}</div>{(sub || badge) && <div className="sub">{badge && <b className="step-min">{badge}</b>}{badge && sub ? " · " : ""}{sub}</div>}</span>
+      {!disabled && <Icon name="chevron" className="step-go" size={22} />}
+    </button>
+  );
+}

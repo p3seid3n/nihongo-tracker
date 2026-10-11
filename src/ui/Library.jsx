@@ -9,7 +9,7 @@ import { MATURE_DAYS } from "../lib/stats.js";
 
 const KIND_LABEL = { kana: "Kana", kanji: "Kanji", vocab: "Vocabulary" };
 
-export function Library() {
+export function Library({ onBack }) {
   const { store, open } = useApp();
   const now = useNow(60000);
   const [deckId, setDeckId] = useState(null);
@@ -18,7 +18,7 @@ export function Library() {
 
   return (
     <div className="page">
-      <PageHead title="Cards" right={<button className="btn btn-tonal btn-sm" onClick={() => open({ type: "import" })}><Icon name="upload" /> Import</button>} />
+      <PageHead title="Decks" onBack={onBack} right={<button className="btn btn-tonal btn-sm" onClick={() => open({ type: "import" })}><Icon name="upload" /> Import</button>} />
       {rows.length === 0 && (
         <div className="card empty">
           <div className="big" lang="ja">札</div>

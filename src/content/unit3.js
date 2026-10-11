@@ -50,17 +50,17 @@ export const unit3 = [
         h: "Two directions of respect",
         p: [
           "**Honorific (尊敬語)** raises the other person's actions. **Humble (謙譲語)** lowers your own. Together they are called 敬語 (keigo). You'll hear them at shops, offices and in announcements.",
-          "Many common verbs have special replacements: 言う → おっしゃる (honorific) / 申す (humble); 食べる・飲む → 召し上がる / いただく; 行く・来る・いる → いらっしゃる / 参る・おる; 見る → ご覧になる / 拝見する; する → なさる / 致す.",
+          "Many common verbs have special replacements: 言う → おっしゃる (honorific) / 申す (humble); 食べる・飲む → 召し上がる / いただく; 行く・来る・いる → いらっしゃる / 参る・おる (visiting someone: 伺う); 見る → ご覧になる / 拝見する; する → なさる / 致す.",
         ],
         ex: [
           ["先生[せんせい]|は|何[なん]|と|おっしゃいました|か", "What did the teacher say?"],
-          ["明日[あした]|お|伺[うかが]い|します", "I will visit you tomorrow. (humble)"],
+          ["明日[あした]|伺[うかが]います", "I will visit you tomorrow. (humble)"],
         ],
       },
       {
         h: "お〜になる and お〜する",
         p: [
-          "For other verbs: honorific **お + stem + になる**; humble **お + stem + する**. Requests: **お + stem + ください**.",
+          "For other verbs: honorific **お + stem + になる**; humble **お + stem + する**. Requests: **お + stem + ください**. Use **ご** instead of お with する-verbs of Chinese origin (ご説明[せつめい]する, ご利用[りよう]ください), and don't use the pattern with one-syllable stems like 見る・いる (use ご覧になる, いらっしゃる). The polite forms of おっしゃる・いらっしゃる・なさる・くださる are おっしゃいます, いらっしゃいます, なさいます, くださいます.",
         ],
         ex: [
           ["社長[しゃちょう]|は|もう|お|帰[かえ]り|に|なりました", "The president has already gone home."],
@@ -155,7 +155,7 @@ export const unit3 = [
     ],
     cloze: [
       ["明日[あした]|は|雨[あめ]|かも*|しれない", "It might rain tomorrow.", "", "かも,でも,から,けど"],
-      ["たぶん|大丈夫[だいじょうぶ]|でしょう*", "It's probably fine.", "", "でしょう,です,でした,ですか"],
+      ["たぶん|大丈夫[だいじょうぶ]|でしょう*", "It's probably fine.", "", "でしょう,ません,ましょう,ない"],
     ],
     vocab: [],
   },
@@ -197,7 +197,7 @@ export const unit3 = [
       {
         h: "Looks and seems",
         p: [
-          "**ようだ / みたいだ**: seems like, based on what you perceive. **〜そう** (on a stem): looks like it's about to; 美味しそう = looks delicious.",
+          "**ようだ / みたいだ**: seems like, based on what you perceive. **〜そう** (on a stem): looks like (it is / it's about to happen): 雨[あめ]が降[ふ]りそう = looks like rain is coming; 美味しそう = looks delicious.",
         ],
         ex: [
           ["雨[あめ]|が|降[ふ]る|ようだ", "It seems like it's going to rain."],
@@ -216,7 +216,7 @@ export const unit3 = [
     ],
     cloze: [
       ["美味[おい]しそう*", "It looks delicious.", "Stem + そう = looks like", "美味[おい]しそう,美味[おい]しいそう,美味[おい]しくそう,美味[おい]しだ"],
-      ["彼[かれ]|は|医者[いしゃ]|らしい*", "Apparently he is a doctor.", "", "らしい,そうだ,ようだ,みたい"],
+      ["彼[かれ]|は|医者[いしゃ]|らしい*", "Apparently he is a doctor.", "", "らしい,そうだ,ようだ,たい"],
     ],
     vocab: [],
   },
@@ -229,8 +229,8 @@ export const unit3 = [
         h: "Comparing two things",
         p: ["**A は B より …** = A is more … than B. **A の方が …** puts the emphasis on the winner. **〜た方がいい** = “you had better …”."],
         ex: [
-          ["電車[でんしゃ]|は|バス|より|早[はや]い", "The train is faster than the bus."],
-          ["バス|より|電車[でんしゃ]|の|方[ほう]|が|早[はや]い", "The train is faster than the bus."],
+          ["電車[でんしゃ]|は|バス|より|速[はや]い", "The train is faster than the bus."],
+          ["バス|より|電車[でんしゃ]|の|方[ほう]|が|速[はや]い", "The train is faster than the bus."],
           ["早[はや]く|寝[ね]た|方[ほう]|が|いい", "You should go to bed early."],
         ],
       },
@@ -244,7 +244,7 @@ export const unit3 = [
       },
     ],
     cloze: [
-      ["電車[でんしゃ]|は|バス|より*|早[はや]い", "The train is faster than the bus.", "より marks the thing compared against.", "より,だけ,しか,も"],
+      ["電車[でんしゃ]|は|バス|より*|速[はや]い", "The train is faster than the bus.", "より marks the thing compared against.", "より,だけ,しか,も"],
       ["日本[にほん]|で|富士山[ふじさん]|が|一番[いちばん]*|高[たか]い", "In Japan, Mt. Fuji is the highest.", "", "一番[いちばん],少[すこ]し,とても,もっと"],
     ],
     vocab: [],
@@ -292,7 +292,7 @@ export const unit3 = [
     ],
     cloze: [
       ["傘[かさ]|を|持[も]たないで*|出[で]かけた", "I went out without taking an umbrella.", "", "持[も]たないで,持[も]たなくて,持[も]たない,持[も]って"],
-      ["行[い]かなくて*|よかった", "I'm glad I didn't go.", "", "行[い]かなくて,行[い]かないで,行[い]かない,行[い]って"],
+      ["行[い]かなくて*|よかった", "I'm glad I didn't go.", "", "行[い]かなくて,行[い]かなかった,行[い]かない,行[い]って"],
     ],
     conj: [{ pos: "verb", form: "naide", n: 3 }],
     vocab: [],
@@ -316,7 +316,7 @@ export const unit3 = [
     ],
     cloze: [
       ["それ|が|嘘[うそ]|な|わけ*|が|ない", "There's no way that's a lie.", "", "わけ,こと,もの,ところ"],
-      ["そういう|わけ*|です", "That's the reason.", "", "わけ,こと,もの,ところ"],
+      ["そういう|わけ*|です", "That's the reason.", "", "わけ,を,が,に"],
     ],
     quiz: [["What does 〜わけではない express?", "It's not that …", "There is no way that …", "I want to …", "~〜わけではない softens a claim: it's not that …"], ["What does 〜わけがない express?", "There's no way that …", "It's probably that …", "I want to …", "~わけがない = no way."]],
     vocab: [],

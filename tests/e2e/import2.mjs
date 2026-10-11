@@ -1,4 +1,4 @@
-import { launch, shot, BASE } from "./lib.mjs";
+import { launch, shot, BASE, openCards } from "./lib.mjs";
 const FILE = process.env.APKG || "/mnt/user-data/uploads/All_decks-20261004095235.apkg";
 const { browser, page, errors } = await launch();
 const log = (...a) => console.log(...a);
@@ -30,7 +30,7 @@ log("home:", (await page.innerText(".plan")).replace(/\n/g, " | "));
 await shot(page, "36-home");
 // study the Kaishi deck and the RRTK deck
 for (const [needle, tag] of [["Kaishi", "kaishi"], ["RRTK", "rrtk"]]) {
-  await page.click("nav >> text=Cards");
+  await openCards(page);
   await page.click(`.card:has-text("${needle}")`);
   await page.click("text=Study");
   await page.waitForSelector(".flash");

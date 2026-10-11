@@ -115,7 +115,9 @@ function wrongConj(word, form, rng) {
 
 function conjExercise(lessonId, spec, ctx) {
   const { rng, weight } = ctx;
-  const pool = (POS_POOL[spec.pos] || POS_POOL.verb)().filter((w) => conjMarkup(w, spec.form));
+  // "to be" and "wake up / sleep" have no everyday passive, so they stay out of passive drills
+  const noPassive = new Set(["iru", "okiru", "neru"]);
+  const pool = (POS_POOL[spec.pos] || POS_POOL.verb)().filter((w) => conjMarkup(w, spec.form) && !(spec.form === "passive" && noPassive.has(w.id)));
   const word = pick(rng, pool, (w) => weight(w.id));
   if (!word) return null;
   const correct = conjMarkup(word, spec.form);

@@ -8,7 +8,7 @@ await page.click("text=Continue");
 await page.click("text=Continue");
 await page.click("text=Continue");
 await page.click("text=Start learning");
-await page.waitForSelector("text=Today's cards");
+await page.waitForSelector("text=Today's plan");
 await shot(page, "10-home-beginner");
 log("home:", (await page.innerText("body")).split("\n").slice(0, 12).join(" | "));
 
@@ -33,7 +33,7 @@ await page.click(".overlay-wrap >> text=Done");
 await page.waitForSelector(".plan-hero");
 
 // ---- lesson
-await page.click("text=Grammar");
+await page.click("nav >> text=Grammar");
 await page.waitForSelector("text=Foundations");
 await shot(page, "14-learn");
 await page.click(".node.available");
@@ -87,7 +87,7 @@ log("result:", (await page.innerText("h1")));
 await page.click(".overlay-wrap >> text=Done");
 
 // ---- other tabs
-for (const [name, file] of [["Cards", "18-cards"], ["Stats", "19-stats"], ["Settings", "20-settings"]]) {
+for (const [name, file] of [["Practice", "18-practice"], ["Stats", "19-stats"], ["Settings", "20-settings"]]) {
   await page.click(`nav >> text=${name}`);
   await page.waitForTimeout(300);
   await shot(page, file);

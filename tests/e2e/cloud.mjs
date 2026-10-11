@@ -1,4 +1,4 @@
-import { launch, shot } from "./lib.mjs";
+import { launch, shot, settingsPage } from "./lib.mjs";
 import { startMock } from "./mock-supabase.mjs";
 
 const URL_ = process.env.CLOUD_BASE || "http://127.0.0.1:4174";
@@ -14,7 +14,7 @@ await pa.click("text=Intermediate");
 await pa.click("text=Continue"); await pa.click("text=Continue"); await pa.click("text=Continue");
 await pa.click("text=Start learning");
 await pa.waitForSelector(".plan-hero");
-await pa.click("nav >> text=Settings");
+await settingsPage(pa, "account");
 await pa.click("text=Sign in or create account");
 await pa.waitForSelector("text=Welcome back");
 await shot(pa, "40-auth-signin");
@@ -60,7 +60,7 @@ await pb.waitForSelector(".flash");
 for (let i = 0; i < 6; i++) { await pb.click("button.show-btn"); await pb.click("button.grade.g3"); }
 await pb.click(".study-top button[aria-label='Close session']");
 await pb.waitForSelector(".plan-hero");
-await pb.click("nav >> text=Settings");
+await settingsPage(pb, "account");
 await pb.click("text=Sync now");
 await pb.waitForSelector("text=Up to date", { timeout: 15000 });
 await pb.waitForTimeout(500);
@@ -86,7 +86,7 @@ ok(na === nb && na === "FromB", `settings converge (A=${na}, B=${nb})`);
 // reload A: the session persists
 await pa.reload({ waitUntil: "networkidle" });
 await pa.waitForSelector(".plan-hero");
-await pa.click("nav >> text=Settings");
+await settingsPage(pa, "account");
 await pa.waitForSelector("text=mael@example.com");
 ok(true, "A still signed in after reload");
 

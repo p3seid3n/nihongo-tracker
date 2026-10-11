@@ -42,3 +42,13 @@ export async function solveMatch(page) {
     }
   }
 }
+
+/** Open a Settings page by its data-page id (plan, pace, cards, memory, sound, look, data, about, account). */
+export async function settingsPage(page, id) {
+  await page.click("nav >> text=Settings");
+  // start from the menu even if a sub page was left open
+  if (!(await page.locator(`[data-page="${id}"]`).count())) await page.click('button[aria-label="Back"]').catch(() => {});
+  await page.click(`[data-page="${id}"]`);
+}
+/** The card library lives under Settings → Cards and decks. */
+export const openCards = (page) => settingsPage(page, "cards");

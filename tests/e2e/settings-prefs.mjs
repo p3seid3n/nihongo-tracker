@@ -1,5 +1,5 @@
 // Audio timing + kanji font settings: they apply, persist, and the fonts really load.
-import { launch, shot, BASE } from "./lib.mjs";
+import { launch, shot, BASE, settingsPage, openCards } from "./lib.mjs";
 let failed = false;
 const ok = (c, m) => { console.log(c ? "ok:" : "FAIL:", m); if (!c) failed = true; };
 const { browser, page, errors } = await launch();
@@ -23,14 +23,18 @@ await page.evaluate(() => {
   });
 });
 
-await page.click("nav >> text=Settings");
-await page.waitForSelector("text=Kanji font");
+await settingsPage(page, "sound");
+await page.waitForSelector("text=Read the word aloud");
 await page.locator("text=Read the word aloud").scrollIntoViewIfNeeded();
 await shot(page, "90-settings-audio");
-const seg = (label) => page.locator(`.seg[aria-label='${label}'], [aria-label='${label}']`).first();
 ok(await page.locator("text=Read the word aloud").count() === 1, "word audio setting present");
 ok(await page.locator("text=Read the example sentence aloud").count() === 1, "sentence audio setting present");
+// word audio "With the answer": silent on card open, speaks on reveal
+await page.click(".list-item:has-text('Read the word aloud') button:has-text('With the answer')");
+await page.click(".list-item:has-text('Read the example sentence aloud') button:has-text('Off')");
 
+await settingsPage(page, "look");
+await page.waitForSelector("text=Kanji font");
 // default font is Classic and nothing extra is fetched until chosen (previews load lazily)
 ok(await page.evaluate(() => (document.documentElement.dataset.kfont || "mincho") === "mincho"), "default font is Classic");
 await page.locator("text=Kanji font").first().scrollIntoViewIfNeeded();
@@ -45,11 +49,7 @@ for (const [label, id, fam] of [["Clear", "gothic", "Kotoba Gothic"], ["Textbook
 await page.click(".font-pick:has-text('Textbook')");
 await shot(page, "92-font-textbook");
 
-// word audio "With the answer": silent on card open, speaks on reveal
-await page.locator("text=Read the word aloud").scrollIntoViewIfNeeded();
-await page.click(".list-item:has-text('Read the word aloud') button:has-text('With the answer')");
-await page.click(".list-item:has-text('Read the example sentence aloud') button:has-text('Off')");
-await page.click("nav >> text=Cards");
+await openCards(page);
 await page.click("button.card:has-text('Pref deck')");
 await page.click(".sheet button:has-text('Study')");
 await page.waitForSelector(".flash"); await page.waitForTimeout(700);

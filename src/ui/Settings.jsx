@@ -9,8 +9,10 @@ import { loadVoices, pickVoice, say, getAudioInfo, clearAudio, ttsSupported, aud
 import { KANJI_FONTS, ensureFont } from "../lib/fonts.js";
 import { recognitionSupported, recordingSupported } from "../lib/pronounce.js";
 import MemoryModel from "./MemoryModel.jsx";
+import { Library } from "./Library.jsx";
+import { PACE, EARLY_LESSONS, grammarInterval } from "../lib/plan.js";
 
-export const APP_VERSION = "4.6.0";
+export const APP_VERSION = "4.7.0";
 
 function Row({ title, sub, children }) {
   return (
@@ -85,7 +87,7 @@ function AudioSection({ s, set }) {
           <button className="btn btn-soft btn-sm" onClick={removeAudio}>Remove</button>
         </div>
       ) : (
-        <Row title="Native audio" sub="Importing a deck with audio (like Kaishi) in Cards → Import Anki deck adds the original recordings. Already imported? Import the same file again, your progress stays." />
+        <Row title="Native audio" sub="Importing a deck with audio (like Kaishi) under Settings → Backup and import adds the original recordings. Already imported? Import the same file again, your progress stays." />
       )}
     </Section>
   );
@@ -109,11 +111,35 @@ function KanjiFontPicker({ value, onChange }) {
   );
 }
 
+function Sub({ title, onBack, children }) {
+  return (
+    <div className="page">
+      <PageHead title={title} onBack={onBack} />
+      {children}
+    </div>
+  );
+}
+
+function MenuRow({ icon, title, sub, onClick, id }) {
+  return (
+    <button className="list-item" onClick={onClick} data-page={id}>
+      <span className="menu-icon"><Icon name={icon} size={22} /></span>
+      <span className="grow"><div>{title}</div>{sub && <div className="small dim">{sub}</div>}</span>
+      <Icon name="chevron" size={20} className="dim" />
+    </button>
+  );
+}
+
+const MINUTE_CHOICES = [10, 20, 30, 45, 60].map((m) => ({ value: m, label: String(m) }));
+
 export function Settings() {
   const { store, sync, session, open, confirm, toast, resetCaches } = useApp();
   const s = store.settings;
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
+  const [page, setPageRaw] = useState(null);
+  const setPage = (p) => { setPageRaw(p); window.scrollTo(0, 0); };
+  const back = () => setPage(null);
   const set = (patch) => store.updateSettings(patch);
   const setTrack = (k, v) => set({ tracks: { ...s.tracks, [k]: v } });
   const setPer = (k, v) => set({ newPerDay: { ...s.newPerDay, [k]: v } });
@@ -163,113 +189,202 @@ export function Settings() {
   };
 
   const statusText = { off: "Off", idle: "Waiting", syncing: "Syncing…", ok: "Up to date", offline: "Offline. Will sync when you're back online", error: "Sync problem" }[sync.status] || "";
+  const deckCount = store.deckList().length;
 
+  // ---------------------------------------------------------------- pages
+  if (page === "account") {
+    return (
+      <Sub title="Account and sync" onBack={back}>
+        <section className="stack" style={{ gap: 10 }}>
+          {!cloudConfigured && <Banner icon="info">Cloud sync isn't set up for this copy of the app. Everything is saved on this device. The README explains how to connect a free Supabase project.</Banner>}
+          {cloudConfigured && !session && (
+            <div className="card stack">
+              <p className="dim">Sign in to keep your progress in sync between your phone and computer.</p>
+              <button className="btn btn-primary" onClick={() => open({ type: "auth" })}><Icon name="user" /> Sign in or create account</button>
+            </div>
+          )}
+          {session && (
+            <div className="card stack">
+              <div className="spread">
+                <div className="grow" style={{ minWidth: 0 }}><b style={{ overflowWrap: "anywhere" }}>{session.user?.email}</b><div className="small dim"><span className={`sync-dot ${sync.status}`} /> {statusText}</div></div>
+              </div>
+              <div className="small dim">Last synced: {last}</div>
+              {sync.status === "error" && <Banner kind="err" icon="warn">{sync.error?.message || "Could not reach the server."}</Banner>}
+              <div className="row">
+                <button className="btn btn-tonal grow" disabled={sync.status === "syncing"} onClick={() => sync.run()}><Icon name="refresh" /> Sync now</button>
+                <button className="btn btn-soft" disabled={busy} onClick={doSignOut}><Icon name="logout" /> Sign out</button>
+              </div>
+            </div>
+          )}
+        </section>
+        <Section title="Profile">
+          <div className="list-item">
+            <div className="grow field"><label htmlFor="nm">Your name</label><input id="nm" className="input" defaultValue={s.name} maxLength={30} onBlur={(e) => { if (e.target.value.trim() !== s.name) set({ name: e.target.value.trim() }); }} /></div>
+          </div>
+        </Section>
+      </Sub>
+    );
+  }
+
+  if (page === "plan") {
+    const every = s.grammarEvery ?? PACE.def;
+    const quick = grammarInterval(s, 0);
+    return (
+      <Sub title="Daily plan" onBack={back}>
+        <Section title="Time" hint="Today lists cards first, then fits other practice into this many minutes. What does not fit waits under “If you have time”.">
+          <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+            <div><div>Minutes per day</div></div>
+            <Seg label="Minutes per day" value={s.minutes ?? 20} onChange={(v) => set({ minutes: v })} options={MINUTE_CHOICES} />
+          </div>
+        </Section>
+        <Section title="New grammar" hint={s.grammarEarlyFast !== false ? `A new lesson opens every ${every} day${every === 1 ? "" : "s"}. The first ${EARLY_LESSONS} lessons are easy, so they come every ${quick} day${quick === 1 ? "" : "s"}. In between, grammar days hold a review or sentence practice. You can always start a lesson early from the Grammar tab.` : `A new lesson opens every ${every} day${every === 1 ? "" : "s"}. In between, grammar days hold a review or sentence practice. You can always start a lesson early from the Grammar tab.`}>
+          <Row title="Days between new lessons"><Stepper value={every} min={PACE.min} max={PACE.max} label="days between new lessons" onChange={(v) => set({ grammarEvery: v })} /></Row>
+          <Row title="Early lessons are quicker" sub={`The first ${EARLY_LESSONS} lessons come about three times as often.`}><Switch checked={s.grammarEarlyFast !== false} onChange={(v) => set({ grammarEarlyFast: v })} label="Early lessons are quicker" /></Row>
+        </Section>
+        <Section title="What you study" hint="Turn tracks off to focus. A kanji-only learner can switch off everything else.">
+          <Row title="Kana"><Switch checked={s.tracks.kana} onChange={(v) => setTrack("kana", v)} label="Kana" /></Row>
+          <Row title="Kanji"><Switch checked={s.tracks.kanji} onChange={(v) => setTrack("kanji", v)} label="Kanji" /></Row>
+          <Row title="Vocabulary"><Switch checked={s.tracks.vocab} onChange={(v) => setTrack("vocab", v)} label="Vocabulary" /></Row>
+          <Row title="Grammar lessons"><Switch checked={s.tracks.grammar} onChange={(v) => setTrack("grammar", v)} label="Grammar lessons" /></Row>
+        </Section>
+      </Sub>
+    );
+  }
+
+  if (page === "pace") {
+    return (
+      <Sub title="New cards and reviews" onBack={back}>
+        <Section title="Per day" hint="Reviews always come before new cards.">
+          <Row title="New kana per day"><Stepper value={s.newPerDay.kana} min={0} max={46} label="new kana" onChange={(v) => setPer("kana", v)} /></Row>
+          <Row title="New kanji per day"><Stepper value={s.newPerDay.kanji} min={0} max={60} label="new kanji" onChange={(v) => setPer("kanji", v)} /></Row>
+          <Row title="New words per day"><Stepper value={s.newPerDay.vocab} min={0} max={60} label="new words" onChange={(v) => setPer("vocab", v)} /></Row>
+          <Row title="Other decks per day"><Stepper value={s.newPerDay.generic} min={0} max={60} label="new cards" onChange={(v) => setPer("generic", v)} /></Row>
+          <Row title="Review limit per day"><Stepper value={s.maxReviews} min={25} max={1000} step={25} label="review limit" onChange={(v) => set({ maxReviews: v })} /></Row>
+          <Row title="Daily effort budget" sub="Every answer costs points: a review 1, a new card 2, a recall review 3, a new recall card 4. When the points run out, the rest waits for tomorrow."><Stepper value={s.effortBudget ?? 200} min={40} max={1000} step={20} label="effort points" onChange={(v) => set({ effortBudget: v })} /></Row>
+          <Row title="Slow down new cards when busy" sub="Fewer new cards while many reviews are due or your recall this week is below 80%."><Switch checked={s.autoThrottle !== false} onChange={(v) => set({ autoThrottle: v })} label="Slow down new cards when busy" /></Row>
+        </Section>
+        <Section title="Recall cards" hint="Once you recognise a word well, you also get asked to say it in Japanese: you see the meaning and type the word.">
+          <Row title="Recall cards"><Switch checked={s.recall !== false} onChange={(v) => set({ recall: v })} label="Recall cards" /></Row>
+          {s.recall !== false && <Row title="New recall cards per day"><Stepper value={s.recallNewPerDay ?? 5} min={0} max={30} label="new recall cards" onChange={(v) => set({ recallNewPerDay: v })} /></Row>}
+          {s.recall !== false && <Row title="Start recall after" sub="How many days a word must stay in your memory first."><Stepper value={s.recallAfter ?? 4} min={1} max={60} label="days before recall" onChange={(v) => set({ recallAfter: v })} /></Row>}
+        </Section>
+        <Section title="How you learn" hint="A lower retention target means fewer reviews but more forgetting.">
+          <Row title="Guess before you see it" sub="Before a new word or kanji is shown, you get a moment to guess what it means. A wrong guess still helps it stick (the pretesting effect), but it makes new cards slower. Off by default."><Switch checked={s.pretest === true} onChange={(v) => set({ pretest: v })} label="Guess before you see it" /></Row>
+          <Row title="Weak spots round" sub="At the end of a session, a few cards you missed twice in the last three days come back once more."><Switch checked={s.weakSpots !== false} onChange={(v) => set({ weakSpots: v })} label="Weak spots round" /></Row>
+          <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+            <div><div>Target retention</div><div className="small dim">How often you want to remember a card when it comes back</div></div>
+            <Seg label="Target retention" value={s.retention} onChange={(v) => set({ retention: v })} options={[{ value: 0.85, label: "85%" }, { value: 0.9, label: "90%" }, { value: 0.95, label: "95%" }]} />
+          </div>
+        </Section>
+      </Sub>
+    );
+  }
+
+  if (page === "cards") return <Library onBack={back} />;
+
+  if (page === "memory") {
+    return <Sub title="Memory model" onBack={back}><MemoryModel Section={Section} Row={Row} /></Sub>;
+  }
+
+  if (page === "sound") return <Sub title="Listening and speaking" onBack={back}><AudioSection s={s} set={set} /></Sub>;
+
+  if (page === "look") {
+    return (
+      <Sub title="Look and feel" onBack={back}>
+        <Section title="Reading">
+          <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+            <div><div>Furigana</div><div className="small dim">Auto hides readings for kanji you already know</div></div>
+            <Seg label="Furigana" value={s.furigana} onChange={(v) => set({ furigana: v })} options={[{ value: "auto", label: "Auto" }, { value: "always", label: "Always" }, { value: "never", label: "Never" }]} />
+          </div>
+          <KanjiFontPicker value={s.kanjiFont || "mincho"} onChange={(v) => set({ kanjiFont: v })} />
+        </Section>
+        <Section title="Appearance">
+          <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+            <div>Theme</div>
+            <Seg label="Theme" value={s.theme} onChange={(v) => set({ theme: v })} options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }, { value: "system", label: "System" }]} />
+          </div>
+          <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+            <div><div>Animations</div><div className="small dim">Springy motion. Reduced keeps screens still. Follows your device's reduce-motion setting too.</div></div>
+            <Seg label="Animations" value={s.motion || "full"} onChange={(v) => set({ motion: v })} options={[{ value: "full", label: "Full" }, { value: "reduced", label: "Reduced" }]} />
+          </div>
+        </Section>
+        <Section title="Touch">
+          <Row title="Haptic feedback" sub={canHaptic ? (onIOS ? "Taps and answers play a light tick (iOS 17.4 or newer)" : "Short vibrations on taps and answers") : "This browser can't vibrate. Works on Android Chrome and iPhone Safari."}><Switch checked={s.haptics} onChange={(v) => { set({ haptics: v }); setHaptics(v); if (v) hap.medium(); }} label="Haptics" /></Row>
+          {s.haptics && canHaptic && (
+            <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }} data-haptic="none">
+              <div><div>Try haptics</div><div className="small dim">Tap, good, wrong, finished</div></div>
+              <div className="row-wrap">
+                <button className="btn btn-soft btn-sm" onClick={hap.tap}>Tap</button>
+                <button className="btn btn-soft btn-sm" onClick={hap.good}>Good</button>
+                <button className="btn btn-soft btn-sm" onClick={hap.bad}>Wrong</button>
+                <button className="btn btn-soft btn-sm" onClick={hap.done}>Finished</button>
+              </div>
+            </div>
+          )}
+        </Section>
+      </Sub>
+    );
+  }
+
+  if (page === "data") {
+    return (
+      <Sub title="Backup and import" onBack={back}>
+        <Section title="Anki" hint="Bring your kanji and vocabulary decks along, with your progress and audio.">
+          <button className="list-item" onClick={() => open({ type: "import" })}><Icon name="cards" /><span className="grow">Import Anki deck</span></button>
+        </Section>
+        <Section title="Backup" hint="A backup file holds every deck, card and review. Restoring merges it with what is on this device.">
+          <button className="list-item" onClick={exportBackup}><Icon name="download" /><span className="grow">Export backup</span></button>
+          <button className="list-item" onClick={() => fileRef.current?.click()}><Icon name="upload" /><span className="grow">Restore from backup</span></button>
+          <input ref={fileRef} type="file" accept=".json,application/json" className="visually-hidden" aria-label="Backup file" onChange={(e) => restore(e.target.files?.[0])} />
+        </Section>
+      </Sub>
+    );
+  }
+
+  if (page === "about") {
+    return (
+      <Sub title="About" onBack={back}>
+        <Section title="Kotoba">
+          <Row title="Version" sub={`Kotoba ${APP_VERSION}`} />
+          <button className="list-item" onClick={resetCaches}><Icon name="refresh" /><span className="grow"><div>Reload with a fresh copy</div><div className="small dim">Fixes a stuck or outdated app. Your data is kept.</div></span></button>
+        </Section>
+        <Section title="Danger zone">
+          <button className="list-item" style={{ color: "var(--rose)" }} onClick={doReset}><Icon name="trash" /><span className="grow">Erase all data on this device</span></button>
+        </Section>
+        <p className="tiny faint" style={{ padding: "0 8px" }}>Grammar lessons follow the order of <a href={SOURCE.url} target="_blank" rel="noreferrer">{SOURCE.name}</a> by Tae Kim, licensed {SOURCE.license}. Spaced repetition uses the open FSRS algorithm. Stroke order data is from <a href="https://kanjivg.tagaini.net" target="_blank" rel="noreferrer">KanjiVG</a> (CC BY-SA 3.0). Noto Sans JP and Klee One fonts are licensed under the SIL Open Font License.</p>
+      </Sub>
+    );
+  }
+
+  // ---------------------------------------------------------------- menu
+  const accountSub = session ? `${session.user?.email} · ${statusText}` : cloudConfigured ? "Not signed in" : "Saved on this device only";
   return (
     <div className="page">
       <PageHead title="Settings" />
 
+      <div className="list">
+        <MenuRow id="account" icon={session ? "cloud" : "user"} title={s.name ? `${s.name}` : "Account and sync"} sub={accountSub} onClick={() => setPage("account")} />
+      </div>
+
       <section className="stack" style={{ gap: 10 }}>
-        <div className="section-title"><h2>Account and sync</h2></div>
-        {!cloudConfigured && <Banner icon="info">Cloud sync isn't set up for this copy of the app. Everything is saved on this device. The README explains how to connect a free Supabase project.</Banner>}
-        {cloudConfigured && !session && (
-          <div className="card stack">
-            <p className="dim">Sign in to keep your progress in sync between your phone and computer.</p>
-            <button className="btn btn-primary" onClick={() => open({ type: "auth" })}><Icon name="user" /> Sign in or create account</button>
-          </div>
-        )}
-        {session && (
-          <div className="card stack">
-            <div className="spread">
-              <div className="grow" style={{ minWidth: 0 }}><b style={{ overflowWrap: "anywhere" }}>{session.user?.email}</b><div className="small dim"><span className={`sync-dot ${sync.status}`} /> {statusText}</div></div>
-            </div>
-            <div className="small dim">Last synced: {last}</div>
-            {sync.status === "error" && <Banner kind="err" icon="warn">{sync.error?.message || "Could not reach the server."}</Banner>}
-            <div className="row">
-              <button className="btn btn-tonal grow" disabled={sync.status === "syncing"} onClick={() => sync.run()}><Icon name="refresh" /> Sync now</button>
-              <button className="btn btn-soft" disabled={busy} onClick={doSignOut}><Icon name="logout" /> Sign out</button>
-            </div>
-          </div>
-        )}
+        <div className="section-title"><h2>Learning</h2></div>
+        <div className="list">
+          <MenuRow id="plan" icon="clock" title="Daily plan" sub={`${s.minutes ?? 20} min a day · lesson every ${s.grammarEvery ?? PACE.def} days`} onClick={() => setPage("plan")} />
+          <MenuRow id="pace" icon="bolt" title="New cards and reviews" sub={`${s.newPerDay.kanji} kanji, ${s.newPerDay.vocab} words a day · up to ${s.maxReviews} reviews`} onClick={() => setPage("pace")} />
+          <MenuRow id="cards" icon="cards" title="Cards and decks" sub={deckCount ? `${deckCount} deck${deckCount === 1 ? "" : "s"}` : "No decks yet"} onClick={() => setPage("cards")} />
+          <MenuRow id="memory" icon="target" title="Memory model" sub="How well the app predicts your forgetting" onClick={() => setPage("memory")} />
+        </div>
       </section>
 
-      <Section title="Profile">
-        <div className="list-item">
-          <div className="grow field"><label htmlFor="nm">Your name</label><input id="nm" className="input" defaultValue={s.name} maxLength={30} onBlur={(e) => { if (e.target.value.trim() !== s.name) set({ name: e.target.value.trim() }); }} /></div>
+      <section className="stack" style={{ gap: 10 }}>
+        <div className="section-title"><h2>App</h2></div>
+        <div className="list">
+          <MenuRow id="sound" icon="volume" title="Listening and speaking" sub="Audio, voice, pronunciation check" onClick={() => setPage("sound")} />
+          <MenuRow id="look" icon="eye" title="Look and feel" sub="Furigana, kanji font, theme, haptics" onClick={() => setPage("look")} />
+          <MenuRow id="data" icon="download" title="Backup and import" sub="Anki decks, backup file" onClick={() => setPage("data")} />
+          <MenuRow id="about" icon="info" title="About" sub={`Kotoba ${APP_VERSION}`} onClick={() => setPage("about")} />
         </div>
-      </Section>
-
-      <Section title="What you study" hint="Turn tracks off to focus. A kanji-only learner can switch off everything else.">
-        <Row title="Kana"><Switch checked={s.tracks.kana} onChange={(v) => setTrack("kana", v)} label="Kana" /></Row>
-        <Row title="Kanji"><Switch checked={s.tracks.kanji} onChange={(v) => setTrack("kanji", v)} label="Kanji" /></Row>
-        <Row title="Vocabulary"><Switch checked={s.tracks.vocab} onChange={(v) => setTrack("vocab", v)} label="Vocabulary" /></Row>
-        <Row title="Grammar lessons"><Switch checked={s.tracks.grammar} onChange={(v) => setTrack("grammar", v)} label="Grammar lessons" /></Row>
-      </Section>
-
-      <Section title="Pace" hint="Reviews always come before new cards. A lower retention target means fewer reviews but more forgetting.">
-        <Row title="New kana per day"><Stepper value={s.newPerDay.kana} min={0} max={46} label="new kana" onChange={(v) => setPer("kana", v)} /></Row>
-        <Row title="New kanji per day"><Stepper value={s.newPerDay.kanji} min={0} max={60} label="new kanji" onChange={(v) => setPer("kanji", v)} /></Row>
-        <Row title="New words per day"><Stepper value={s.newPerDay.vocab} min={0} max={60} label="new words" onChange={(v) => setPer("vocab", v)} /></Row>
-        <Row title="Other decks per day"><Stepper value={s.newPerDay.generic} min={0} max={60} label="new cards" onChange={(v) => setPer("generic", v)} /></Row>
-        <Row title="Review limit per day"><Stepper value={s.maxReviews} min={25} max={1000} step={25} label="review limit" onChange={(v) => set({ maxReviews: v })} /></Row>
-        <Row title="Daily effort budget" sub="Every answer costs points: a review 1, a new card 2, a recall review 3, a new recall card 4. When the points run out, the rest waits for tomorrow."><Stepper value={s.effortBudget ?? 200} min={40} max={1000} step={20} label="effort points" onChange={(v) => set({ effortBudget: v })} /></Row>
-        <Row title="Slow down new cards when busy" sub="Fewer new cards while many reviews are due or your recall this week is below 80%."><Switch checked={s.autoThrottle !== false} onChange={(v) => set({ autoThrottle: v })} label="Slow down new cards when busy" /></Row>
-        <Row title="Recall cards" sub="Once you recognise a word well, you also get asked to say it in Japanese: you see the meaning and type the word."><Switch checked={s.recall !== false} onChange={(v) => set({ recall: v })} label="Recall cards" /></Row>
-        {s.recall !== false && <Row title="New recall cards per day"><Stepper value={s.recallNewPerDay ?? 5} min={0} max={30} label="new recall cards" onChange={(v) => set({ recallNewPerDay: v })} /></Row>}
-        {s.recall !== false && <Row title="Start recall after" sub="How many days a word must stay in your memory first."><Stepper value={s.recallAfter ?? 4} min={1} max={60} label="days before recall" onChange={(v) => set({ recallAfter: v })} /></Row>}
-        <Row title="Guess before you see it" sub="Before a new word or kanji is shown, you get a moment to guess what it means. A wrong guess still helps it stick (the pretesting effect), but it makes new cards slower. Off by default."><Switch checked={s.pretest === true} onChange={(v) => set({ pretest: v })} label="Guess before you see it" /></Row>
-        <Row title="Weak spots round" sub="At the end of a session, a few cards you missed twice in the last three days come back once more."><Switch checked={s.weakSpots !== false} onChange={(v) => set({ weakSpots: v })} label="Weak spots round" /></Row>
-        <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
-          <div><div>Target retention</div><div className="small dim">How often you want to remember a card when it comes back</div></div>
-          <Seg label="Target retention" value={s.retention} onChange={(v) => set({ retention: v })} options={[{ value: 0.85, label: "85%" }, { value: 0.9, label: "90%" }, { value: 0.95, label: "95%" }]} />
-        </div>
-      </Section>
-
-      <MemoryModel Section={Section} Row={Row} />
-
-      <AudioSection s={s} set={set} />
-
-      <Section title="Reading and look">
-        <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
-          <div><div>Furigana</div><div className="small dim">Auto hides readings for kanji you already know</div></div>
-          <Seg label="Furigana" value={s.furigana} onChange={(v) => set({ furigana: v })} options={[{ value: "auto", label: "Auto" }, { value: "always", label: "Always" }, { value: "never", label: "Never" }]} />
-        </div>
-        <KanjiFontPicker value={s.kanjiFont || "mincho"} onChange={(v) => set({ kanjiFont: v })} />
-        <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
-          <div>Theme</div>
-          <Seg label="Theme" value={s.theme} onChange={(v) => set({ theme: v })} options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }, { value: "system", label: "System" }]} />
-        </div>
-        <Row title="Haptic feedback" sub={canHaptic ? (onIOS ? "Taps and answers play a light tick (iOS 17.4 or newer)" : "Short vibrations on taps and answers") : "This browser can't vibrate. Works on Android Chrome and iPhone Safari."}><Switch checked={s.haptics} onChange={(v) => { set({ haptics: v }); setHaptics(v); if (v) hap.medium(); }} label="Haptics" /></Row>
-        {s.haptics && canHaptic && (
-          <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }} data-haptic="none">
-            <div><div>Try haptics</div><div className="small dim">Tap, good, wrong, finished</div></div>
-            <div className="row-wrap">
-              <button className="btn btn-soft btn-sm" onClick={hap.tap}>Tap</button>
-              <button className="btn btn-soft btn-sm" onClick={hap.good}>Good</button>
-              <button className="btn btn-soft btn-sm" onClick={hap.bad}>Wrong</button>
-              <button className="btn btn-soft btn-sm" onClick={hap.done}>Finished</button>
-            </div>
-          </div>
-        )}
-        <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
-          <div><div>Animations</div><div className="small dim">Springy motion. Reduced keeps screens still. Follows your device's reduce-motion setting too.</div></div>
-          <Seg label="Animations" value={s.motion || "full"} onChange={(v) => set({ motion: v })} options={[{ value: "full", label: "Full" }, { value: "reduced", label: "Reduced" }]} />
-        </div>
-      </Section>
-
-      <Section title="Your data" hint="A backup file holds every deck, card and review. Restoring merges it with what is on this device.">
-        <button className="list-item" onClick={exportBackup}><Icon name="download" /><span className="grow">Export backup</span></button>
-        <button className="list-item" onClick={() => fileRef.current?.click()}><Icon name="upload" /><span className="grow">Restore from backup</span></button>
-        <input ref={fileRef} type="file" accept=".json,application/json" className="visually-hidden" aria-label="Backup file" onChange={(e) => restore(e.target.files?.[0])} />
-        <button className="list-item" onClick={() => open({ type: "import" })}><Icon name="cards" /><span className="grow">Import Anki deck</span></button>
-      </Section>
-
-      <Section title="App">
-        <Row title="Version" sub={`Kotoba ${APP_VERSION}`} />
-        <button className="list-item" onClick={resetCaches}><Icon name="refresh" /><span className="grow"><div>Reload with a fresh copy</div><div className="small dim">Fixes a stuck or outdated app. Your data is kept.</div></span></button>
-        <button className="list-item" style={{ color: "var(--rose)" }} onClick={doReset}><Icon name="trash" /><span className="grow">Erase all data on this device</span></button>
-      </Section>
-
-      <p className="tiny faint" style={{ padding: "0 8px" }}>Grammar lessons follow the order of <a href={SOURCE.url} target="_blank" rel="noreferrer">{SOURCE.name}</a> by Tae Kim, licensed {SOURCE.license}. Spaced repetition uses the open FSRS algorithm. Stroke order data is from <a href="https://kanjivg.tagaini.net" target="_blank" rel="noreferrer">KanjiVG</a> (CC BY-SA 3.0). Noto Sans JP and Klee One fonts are licensed under the SIL Open Font License.</p>
+      </section>
     </div>
   );
 }

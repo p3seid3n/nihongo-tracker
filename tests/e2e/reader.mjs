@@ -23,9 +23,9 @@ const noOverflow = (label) => page.evaluate((label) => {
   return { label, page: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1, body: b.scrollWidth > b.clientWidth + 1 };
 }, label);
 
-// ---- Reading from the Grammar tab
-await page.click("nav >> text=Grammar");
-await page.click("text=Reading");
+// ---- Reading from the Practice tab
+await page.click("nav >> text=Practice");
+await page.click(".step:has-text('Reading')");
 await page.waitForSelector(".rd-card");
 const n = await page.locator(".rd-card").count();
 ok(n === 20, "20 passages listed: " + n);
@@ -96,8 +96,8 @@ await page.click('button[aria-label="Close"]');
 await page.waitForTimeout(500);
 
 // ---- Writing prompts
-await page.click("nav >> text=Grammar");
-await page.click("text=Writing prompts");
+await page.click("nav >> text=Practice");
+await page.click(".step:has-text('Writing prompts')");
 await page.waitForSelector(".rd-card");
 ok(await page.locator(".rd-card").count() === 12, "12 prompts");
 await shot(page, "86-out-list");

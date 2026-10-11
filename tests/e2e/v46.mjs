@@ -1,5 +1,5 @@
 // 4.6: pitch practice (quiz + shadowing), guess-first cards, personal memory model.
-import { launch, shot, BASE } from "./lib.mjs";
+import { launch, shot, BASE, settingsPage, openCards } from "./lib.mjs";
 import { simulate, perturbed } from "../helpers/simlog.js";
 const FILE = process.env.APKG || "/mnt/user-data/uploads/All_decks-20261004095235.apkg";
 const ok = (c, m) => { console.log(c ? "ok:" : "FAIL:", m); if (!c) process.exitCode = 1; };
@@ -17,12 +17,10 @@ await page.click("text=Continue"); await page.click("text=Continue"); await page
 await page.click("text=Start learning"); await page.waitForSelector(".plan-hero");
 
 // ---- pitch practice without pitch data or audio
-await page.click("nav >> text=Grammar");
-await page.click("text=Pitch practice");
-await page.waitForSelector("text=/no pitch accent data/");
-ok(true, "empty state before anything is imported");
-await page.click(".reader-body .btn-primary");
-await page.waitForTimeout(500);
+await page.click("nav >> text=Practice");
+await page.waitForSelector(".step:has-text('Pitch practice')");
+ok(await page.locator(".step:has-text('Pitch practice')").isDisabled(), "pitch practice is locked before a deck with pitch data exists");
+ok(/pitch data/.test(await page.locator(".step:has-text('Pitch practice')").innerText()), "and says what it needs");
 
 // ---- import with audio
 await page.click("nav >> text=Today").catch(() => {});
@@ -36,8 +34,8 @@ await page.waitForSelector("text=/Imported/", { timeout: 240000 });
 await page.click("text=Back to library");
 
 // ---- pitch practice quiz
-await page.click("nav >> text=Grammar");
-await page.click("text=Pitch practice");
+await page.click("nav >> text=Practice");
+await page.click(".step:has-text('Pitch practice')");
 await page.waitForSelector("text=Start", { timeout: 20000 });
 await page.waitForTimeout(900);
 await shot(page, "90-pitch-intro");
@@ -103,13 +101,13 @@ await page.waitForTimeout(600);
 ok(await page.locator(".sheet").count() === 0 && await page.locator("h1:has-text('Shadowing')").count() === 0, "closed shadowing");
 
 // ---- guess first
-await page.click("nav >> text=Settings");
+await settingsPage(page, "pace");
 await page.waitForSelector("text=Guess before you see it");
 await page.locator(".list-item:has-text('Guess before you see it')").scrollIntoViewIfNeeded();
 ok(await page.evaluate(() => window.__ntStore.settings.pretest) === false, "guess-first is off by default");
 await page.locator('button[role=switch][aria-label="Guess before you see it"]').click();
 ok(await page.evaluate(() => window.__ntStore.settings.pretest) === true, "switch turns it on");
-await page.click("nav >> text=Cards");
+await openCards(page);
 await page.click("button.card:has-text('Kaishi')");
 await page.click(".sheet button:has-text('Study')");
 await page.waitForSelector(".flash");
@@ -148,9 +146,9 @@ await page.waitForTimeout(600);
 // ---- memory model
 const wTrue = perturbed({ 8: 0.55, 9: 1.5, 11: 0.5, 13: 1.3, 20: 1.7, 17: 1.3 });
 const rows = simulate({ wTrue, cards: 500, days: 160, seed: 11, perDay: 8 });
-await page.click("nav >> text=Settings");
+await settingsPage(page, "memory");
 await page.waitForSelector("text=Memory model");
-await page.locator("text=Memory model").scrollIntoViewIfNeeded();
+await page.locator("text=Memory model").first().scrollIntoViewIfNeeded();
 ok(/Fit to my reviews/.test(await page.locator("body").innerText()) === false, "no fit offered with few reviews");
 ok(/more reviews? until a fit is possible/.test(await page.locator("section:has-text('Memory model')").innerText()), "explains how many reviews are missing");
 await page.evaluate((rows) => {

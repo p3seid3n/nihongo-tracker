@@ -130,9 +130,10 @@ const G = {
     const V = pick(rng, verbs, (v) => weight(v.id));
     const objs = NOUNS.filter((n) => n.tags.some((t) => V.obj.includes(t)) && !n.tags.includes("role"));
     const O = pick(rng, objs, (n) => weight(n.id));
-    const useTime = rng() < 0.5;
-    const T = useTime ? pick(rng, TIMES) : null;
-    const fs = T ? (T.tense === "past" ? ["past", "pastneg"] : ["aff", "neg"]) : forms;
+    // a time word must agree with the allowed forms (no 昨日 in a lesson that only teaches the present)
+    const okTimes = TIMES.filter((t) => forms.some((f) => (t.tense === "past" ? f === "past" || f === "pastneg" : f === "aff" || f === "neg")));
+    const T = okTimes.length && rng() < 0.5 ? pick(rng, okTimes) : null;
+    const fs = T ? forms.filter((f) => (T.tense === "past" ? f === "past" || f === "pastneg" : f === "aff" || f === "neg")) : forms;
     return {
       forms: fs,
       render: (form) => {

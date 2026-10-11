@@ -17,8 +17,8 @@ await page.waitForSelector("text=/Imported/", { timeout: 60000 });
 await page.click("text=Back to library");
 await page.evaluate(() => window.__ntStore.markLessonsDone(["u1-desu", "u1-wa", "u1-ga", "u1-wo", "u1-ni-de", "u1-past", "u1-neg", "u1-noun-particles", "u1-no", "u1-adverbs", "u1-verbs", "u1-na-adj", "u1-i-adj", "u2-polite"]));
 
-await page.click("nav >> text=Grammar");
-await page.click("text=Sentence practice");
+await page.click("nav >> text=Practice");
+await page.click(".step:has-text('Sentence practice')");
 await page.waitForSelector(".q-instr, .match");
 const kinds = new Set();
 let popups = 0, glossSeen = 0, steps = 0;
@@ -29,7 +29,7 @@ for (let i = 0; i < 60; i++) {
   steps++;
   const instr = (await page.locator(".q-instr").first().innerText().catch(() => "")) || "match";
   kinds.add(instr);
-  if (await page.locator(".tk-g").count()) glossSeen++;
+  if (await page.locator(".tk-g").first().waitFor({ timeout: 400 }).then(() => true).catch(() => false)) glossSeen++;
   // no sideways overflow
   const over = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 || document.querySelector(".lesson-body").scrollWidth > document.querySelector(".lesson-body").clientWidth + 1);
   if (over) ok(false, "horizontal overflow on: " + instr);

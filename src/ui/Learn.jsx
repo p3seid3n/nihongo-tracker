@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
 import { Rich, ExerciseRunner } from "./Exercises.jsx";
@@ -8,7 +8,7 @@ import { LessonTable } from "./LessonTable.jsx";
 import { buildLessonExercises, buildReviewExercises, lessonExamples } from "../lib/exercises.js";
 import { buildSentenceSession } from "../lib/sentenceEx.js";
 import { mulberry32, shuffle } from "../content/generators.js";
-import { makeWeight, sentencePool } from "../lib/personal.js";
+import { makeWeight } from "../lib/personal.js";
 import { currentRetrievability } from "../lib/fsrs.js";
 import { dayStart, fmtSpan } from "../lib/time.js";
 import * as hap from "../lib/haptics.js";
@@ -25,25 +25,20 @@ const isDue = (rec, now) => !!rec && !!rec.done && !!rec.due && dayStart(rec.due
 // ---------------------------------------------------------------------------
 // The path
 export function Learn() {
-  const { store, open } = useApp();
+  const { store, open, go } = useApp();
   const now = useNow(60000);
   const [unitSheet, setUnitSheet] = useState(null);
   const done = LESSONS.filter((l) => store.lessons[l.id]?.done).length;
   const due = LESSONS.filter((l) => isDue(store.lessons[l.id], now));
   const next = LESSONS.find((l) => !store.lessons[l.id]?.done);
-  const pool = useMemo(() => sentencePool(store, now), [store.getVersion()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="page">
       <PageHead title="Grammar" right={<span className="chip">{done} / {LESSONS.length}</span>} />
       <div className="row-wrap">
         <button className="btn btn-tonal" disabled={!done} onClick={() => open({ type: "review" })}><Icon name="refresh" /> Review{due.length ? ` (${due.length} due)` : ""}</button>
-        <button className="btn btn-soft" disabled={pool.length < 6} onClick={() => open({ type: "sentences" })}><Icon name="book" /> Sentence practice</button>
-        <button className="btn btn-soft" onClick={() => open({ type: "reader" })}><Icon name="book" /> Reading</button>
-        <button className="btn btn-soft" onClick={() => open({ type: "output" })}><Icon name="pen" /> Writing prompts</button>
-        <button className="btn btn-soft" onClick={() => open({ type: "pitch" })}><Icon name="volume" /> Pitch practice</button>
+        <button className="btn btn-soft" onClick={() => go("practice")}><Icon name="play" /> More practice</button>
       </div>
-      {pool.length < 6 && <p className="hint" style={{ marginTop: -8 }}>Sentence practice unlocks once you have studied a few vocabulary cards with example sentences.</p>}
 
       <div className="path">
         {UNITS.map((u) => {
