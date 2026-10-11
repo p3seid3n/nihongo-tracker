@@ -229,7 +229,9 @@ export default function App() {
     try { localStorage.setItem("nt-theme", themeSetting || "dark"); } catch { /* the opening animation falls back to dark */ }
     const apply = () => {
       const light = themeSetting === "light" || (themeSetting === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
-      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", light ? "#fbf7f3" : "#151413");
+      const color = light ? "#fbf7f3" : "#151413";
+      window.__ntThemeColor = color; // the opening animation keeps the paper colour until it has finished
+      if (!window.__ntSplashActive) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color);
     };
     apply();
     const mq = window.matchMedia("(prefers-color-scheme: light)");

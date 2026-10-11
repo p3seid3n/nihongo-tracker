@@ -40,8 +40,23 @@ function serviceWorker() {
   };
 }
 
+// Puts the opening animation (src/splash/) straight into index.html, so it starts before the app bundle has loaded.
+function inlineSplash() {
+  const read = (f) => fs.readFileSync(path.resolve("src/splash", f), "utf8");
+  return {
+    name: "kotoba-inline-splash",
+    transformIndexHtml(html) {
+      const k = JSON.stringify(JSON.parse(read("constants.json")));
+      const script = read("renderer.js") + "\n" + read("splash.js").split("__INK_CONSTANTS__").join(k).split("__INK_FIELD__").join(JSON.stringify("/ink/field.png")).split("__INK_FLOOD__").join(JSON.stringify("/ink/flood.png"));
+      return html
+        .replace(/<!-- splash:style[^>]*-->/, `<style>${read("splash.css")}</style>`)
+        .replace(/<!-- splash:body[^>]*-->/, `<div id="splash" aria-hidden="true"><canvas></canvas></div>\n<script>${script}</script>`);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), serviceWorker()],
+  plugins: [react(), inlineSplash(), serviceWorker()],
   // VITE_ is Vite's own prefix. NEXT_PUBLIC_SUPABASE_ is what the Vercel–Supabase integration adds (public values only;
   // service keys and the database address have other names and stay on the server).
   envPrefix: ["VITE_", "NEXT_PUBLIC_SUPABASE_"],

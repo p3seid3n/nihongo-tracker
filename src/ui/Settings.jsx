@@ -12,7 +12,7 @@ import MemoryModel from "./MemoryModel.jsx";
 import { Library } from "./Library.jsx";
 import { PACE, EARLY_LESSONS, grammarInterval } from "../lib/plan.js";
 
-export const APP_VERSION = "4.8.0";
+export const APP_VERSION = "4.8.1";
 
 function Row({ title, sub, children }) {
   return (

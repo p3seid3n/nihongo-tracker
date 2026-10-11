@@ -19,40 +19,10 @@
       #boot-fallback { display: none; font: 16px/1.5 system-ui, sans-serif; padding: 32px 24px; max-width: 460px; margin: 0 auto; }
       #boot-fallback button { font: inherit; padding: 12px 20px; border-radius: 999px; border: 0; background: #ee8559; color: #2a1206; font-weight: 600; margin-top: 12px; }
     </style>
-    <!-- splash:css -->
-<style>
-#splash{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:var(--sp-bg,#151413);transition:opacity .45s cubic-bezier(.2,.7,.2,1),visibility 0s .45s}
-#splash.out{opacity:0;visibility:hidden;pointer-events:none}
-#splash .sp-tile{width:min(58vw,260px);aspect-ratio:1;position:relative;filter:drop-shadow(0 18px 40px rgba(0,0,0,.35));animation:sp-in .5s cubic-bezier(.05,.9,.1,1) both}
-#splash svg{display:block;width:100%;height:100%;overflow:visible}
-#splash .sp-m{fill:none;stroke:#fff;stroke-width:26;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:sp-draw var(--ms) cubic-bezier(.05,.9,.1,1) var(--d) forwards}
-#splash .sp-sun{transform-box:fill-box;transform-origin:50% 50%;transform:scale(.0);animation:sp-sun 1.5s cubic-bezier(.05,.9,.1,1) 534ms forwards}
-#splash .sp-glyph{transform-origin:50% 55%;animation:sp-drift 2.6s cubic-bezier(.1,.8,.2,1) 583ms both}
-@keyframes sp-in{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
-@keyframes sp-draw{to{stroke-dashoffset:0}}
-@keyframes sp-sun{0%{transform:scale(0);opacity:.2}35%{opacity:1}100%{transform:scale(1);opacity:1}}
-@keyframes sp-drift{from{transform:scale(1)}to{transform:scale(1.035)}}
-@media (prefers-reduced-motion:reduce){#splash .sp-m{animation:none;stroke-dashoffset:0}#splash .sp-sun{animation:none;transform:none}#splash .sp-glyph,#splash .sp-tile{animation:none}}
-#splash.calm .sp-m{animation:none;stroke-dashoffset:0}#splash.calm .sp-sun{animation:none;transform:none}#splash.calm .sp-glyph,#splash.calm .sp-tile{animation:none}
-</style>
-<!-- /splash:css -->
+    <!-- splash:style (filled in by the Vite plugin from src/splash/) -->
   </head>
   <body>
-    <!-- splash:html -->
-<div id="splash" aria-hidden="true"><div class="sp-tile"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><defs><filter id="s-ink" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
-<feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" seed="7" result="n"/>
-<feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G" result="d"/>
-<feGaussianBlur in="d" stdDeviation="0.7" result="b"/>
-<feComponentTransfer in="b"><feFuncA type="table" tableValues="0 0 0.15 0.85 1 1"/></feComponentTransfer></filter>
-<filter id="s-paper" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.8 0.35" numOctaves="3" seed="2" result="n"/>
-<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.28  0 0 0 0 0.18  0 0 0 0.55 -0.12"/></filter>
-<radialGradient id="s-vig" cx="50%" cy="46%" r="78%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3a2c18" stop-opacity=".30"/></radialGradient>
-<filter id="s-sunf" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation="0.6"/></filter><clipPath id="s-clip"><rect width="512" height="512" rx="112"/></clipPath>
-<mask id="s-m0" maskUnits="userSpaceOnUse" x="-20" y="-20" width="150" height="150"><path class="sp-m" pathLength="16" style="--len:16;--ms:70ms;--d:140ms" d="M48.38,11.25c4.38,2.5,8.88,7.75,10.38,11.5"/></mask><mask id="s-m1" maskUnits="userSpaceOnUse" x="-20" y="-20" width="150" height="150"><path class="sp-m" pathLength="79" style="--len:79;--ms:85ms;--d:197ms" d="M14.88,33.98c2.52,0.54,6.91,0.76,9.42,0.54c22.95-2.02,40.82-4.02,59.99-4.73c4.2-0.16,6.73,0.26,8.83,0.53"/></mask><mask id="s-m2" maskUnits="userSpaceOnUse" x="-20" y="-20" width="150" height="150"><path class="sp-m" pathLength="32" style="--len:32;--ms:100ms;--d:267ms" d="M38.63,46.65C40,47,41,47,42.45,46.88c7.06-0.6,18.6-2.27,22.81-2.6c1.86-0.15,3.36-0.15,4.74,0.22"/></mask><mask id="s-m3" maskUnits="userSpaceOnUse" x="-20" y="-20" width="150" height="150"><path class="sp-m" pathLength="34" style="--len:34;--ms:125ms;--d:349ms" d="M37.88,61.4c1.5,0.23,2.75,0.35,4.16,0.23c7.68-0.67,20.23-2.28,24.8-2.85c2.16-0.27,3.66-0.15,5.17,0.22"/></mask><mask id="s-m4" maskUnits="userSpaceOnUse" x="-20" y="-20" width="150" height="150"><path class="sp-m" pathLength="25" style="--len:25;--ms:150ms;--d:452ms" d="M37,74.75c0.81,0.81,1.4,1.76,1.53,2.77c0.85,6.73,1.9,11.43,2.89,18.45c0.18,1.24,0.35,2.43,0.54,3.53"/></mask><mask id="s-m5" maskUnits="userSpaceOnUse" x="-20" y="-20" width="150" height="150"><path class="sp-m" pathLength="53" style="--len:53;--ms:190ms;--d:575ms" d="M39.53,76.74c9.24-1.7,22.59-3.37,30.29-4.25c2.21-0.25,3.55,1.17,3.24,2.32c-0.69,2.52-3.74,12.7-4.94,16.98"/></mask><mask id="s-m6" maskUnits="userSpaceOnUse" x="-20" y="-20" width="150" height="150"><path class="sp-m" pathLength="29" style="--len:29;--ms:240ms;--d:731ms" d="M42.2,95.16c6.19-0.53,16.55-1.39,25.32-2.22c1.33-0.13,2.73-0.12,3.95-0.12"/></mask></defs>
-<g clip-path="url(#s-clip)"><rect width="512" height="512" fill="#ece3d0"/><rect width="512" height="512" filter="url(#s-paper)" opacity=".5"/><rect width="512" height="512" fill="url(#s-vig)"/>
-<circle class="sp-sun" cx="340.5" cy="171.5" r="105.0" fill="#c93a2b" filter="url(#s-sunf)"/>
-<g class="sp-glyph"><g transform="translate(66.6 72.7) scale(3.4760)" fill="#16120f" filter="url(#s-ink)"><path mask="url(#s-m0)" d="M46.9 13.7L47.3 15L48 15.6L48.7 16.2L49.4 16.8L50.1 17.5L50.8 18.2L51.5 18.9L52.1 19.7L52.8 20.4L53.4 21.1L54.1 21.8L54.9 22.4L55.8 23L56.7 23.7L60.8 21.8L60.8 20.5L60.6 19.1L60.3 17.8L59.7 16.6L58.9 15.5L58.2 14.5L57.3 13.6L56.5 12.7L55.5 11.8L54.6 11L53.6 10.2L52.5 9.4L51.4 8.7L49.9 8.8Z"/><path mask="url(#s-m1)" d="M14.4 36.8L16.6 37.5L19 38.1L21.3 38.4L23.7 38.4L26.1 38.2L28.3 38L30.4 37.8L32.6 37.7L34.8 37.5L37 37.3L39.1 37.1L41.3 36.9L43.5 36.7L45.6 36.5L47.8 36.3L50 36.1L52.1 36L54.3 35.8L56.5 35.6L58.6 35.4L60.8 35.2L63 35L65.1 34.8L67.3 34.7L69.5 34.5L71.6 34.3L73.8 34.1L75.9 33.9L78.1 33.6L80.2 33.2L82.4 32.9L84.5 32.5L86.6 32.2L88.6 32L90.8 31.8L92.9 31.7L93.3 28.9L91.2 28.3L88.9 27.7L86.6 27.3L84.4 27L82.1 26.9L79.9 26.7L77.7 26.6L75.5 26.5L73.3 26.5L71.1 26.6L68.9 26.7L66.7 26.8L64.5 27L62.4 27.2L60.2 27.3L58 27.5L55.8 27.7L53.6 27.9L51.4 28.1L49.3 28.3L47.1 28.5L44.9 28.7L42.7 28.9L40.6 29.1L38.4 29.3L36.2 29.5L34.1 29.7L31.9 30L29.7 30.2L27.6 30.4L25.4 30.6L23.4 30.8L21.4 30.8L19.4 30.9L17.4 31.1L15.3 31.1Z"/><path mask="url(#s-m2)" d="M38.2 49.5L40.5 50.7L43.1 50.6L45.3 50.5L47.4 50.3L49.5 50.1L51.7 49.9L53.8 49.6L55.8 49.4L57.9 49.1L60 48.8L62.1 48.5L64.1 47.9L66 47.2L67.8 46.4L69.8 45.9L70.2 43.1L68.1 42L65.7 41.3L63.4 40.9L61.2 40.8L59.1 41L57 41.2L54.9 41.5L52.8 41.8L50.7 42L48.6 42.3L46.6 42.6L44.5 42.8L42.5 43.1L40.9 43.2L39 43.8Z"/><path mask="url(#s-m3)" d="M37.5 64.3L39.8 65.3L42.4 65.4L44.7 65.2L46.8 65.1L49 64.9L51.1 64.7L53.3 64.4L55.4 64.2L57.6 63.9L59.7 63.6L61.8 63.4L64 63L66 62.3L67.9 61.6L69.7 60.9L71.8 60.4L72.2 57.6L70.1 56.5L67.6 55.8L65.2 55.5L63 55.4L60.9 55.6L58.7 55.8L56.6 56.1L54.5 56.3L52.4 56.6L50.3 56.8L48.1 57.1L46 57.3L43.9 57.6L42 57.8L40.2 58L38.2 58.5Z"/><path mask="url(#s-m4)" d="M34.7 76.5L34.7 77.9L34.8 78.7L35 80.3L35.2 82.1L35.5 84L35.8 85.8L36.1 87.6L36.4 89.4L36.7 91.2L37 92.9L37.6 94.6L38.4 96.3L39.4 98.1L40.6 99.7L43.3 99.3L44 97.4L44.4 95.5L44.7 93.6L44.7 91.7L44.5 89.9L44.2 88.1L43.9 86.3L43.6 84.5L43.3 82.7L42.9 81L42.7 79.2L42.3 77.2L41.5 74.5L39.3 73Z"/><path mask="url(#s-m5)" d="M40 79.6L42.2 79.7L44.3 79.7L46.4 79.4L48.5 79.1L50.5 78.9L52.6 78.6L54.7 78.3L56.8 78.1L58.9 77.8L61 77.5L63 77.3L65.1 77L67.2 76.8L69.2 76.5L70.1 76.4L69.4 75.6L69 75.1L68.5 76.5L68.1 78.5L67.7 80.6L67.4 82.8L67.2 84.9L67 87.1L66.9 89.2L66.8 91.4L69.5 92.2L70.5 90.3L71.6 88.4L72.6 86.5L73.6 84.6L74.5 82.6L75.3 80.7L76 78.7L76.7 76L76.1 71.4L71.9 68.7L68.6 68.7L66.3 68.9L64.2 69.2L62.1 69.4L60 69.7L57.9 70L55.7 70.3L53.6 70.6L51.5 70.9L49.4 71.2L47.3 71.6L45.2 71.9L43.1 72.3L41 73L39 73.9Z"/><path mask="url(#s-m6)" d="M42.4 98L44.6 98.7L46.7 98.6L48.8 98.5L50.9 98.3L53 98.2L55.1 98L57.2 97.9L59.3 97.7L61.4 97.5L63.5 97.2L65.5 96.8L67.5 96L69.5 95.1L71.5 94.2L71.5 91.4L69.3 90.5L67 89.9L64.9 89.5L62.7 89.5L60.7 89.6L58.6 89.8L56.5 90L54.4 90.2L52.3 90.4L50.2 90.6L48.1 90.8L46.1 91L44 91.2L42 92.3Z"/></g></g></g></svg></div></div>
-<!-- /splash:html -->
+    <!-- splash:body (filled in by the Vite plugin from src/splash/) -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
       <filter id="nt-ink" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G" result="d"/><feGaussianBlur in="d" stdDeviation="0.7" result="b"/><feComponentTransfer in="b"><feFuncA type="table" tableValues="0 0 0.15 0.85 1 1"/></feComponentTransfer></filter>
       <filter id="nt-rough" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="5" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G"/></filter>
@@ -80,33 +50,6 @@
           location.reload();
         });
         window.addEventListener("nt-booted", function () { clearTimeout(timer); document.getElementById("boot-fallback").style.display = "none"; });
-      })();
-      // The opening animation: ink draws the brand character while the app loads, then lifts away.
-      // A reopen within a minute, reduced motion, or no motion preference at all gets a quick fade instead.
-      (function () {
-        var sp = document.getElementById("splash");
-        if (!sp) return;
-        function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-        function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-        var theme = get("nt-theme") || "dark";
-        var light = theme === "light" || (theme === "system" && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches);
-        sp.style.setProperty("--sp-bg", light ? "#fbf7f3" : "#151413");
-        var reduced = get("nt-motion") === "reduced" || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
-        var last = Number(get("nt-last")) || 0;
-        var calm = reduced || (last && Date.now() - last < 60000);
-        if (calm) sp.className = "calm";
-        var t0 = Date.now(), MIN = calm ? 200 : 1300, hidden = false, booted = false;
-        function hide() {
-          if (hidden) return; hidden = true;
-          sp.className += " out";
-          setTimeout(function () { if (sp.parentNode) sp.parentNode.removeChild(sp); }, 800);
-        }
-        function stamp() { set("nt-last", String(Date.now())); }
-        window.addEventListener("nt-booted", function () { booted = true; setTimeout(hide, Math.max(0, MIN - (Date.now() - t0))); stamp(); });
-        document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") stamp(); });
-        window.addEventListener("pagehide", stamp);
-        sp.addEventListener("pointerdown", function () { if (booted) hide(); });
-        setTimeout(hide, 7000); // never cover the "app didn't start" help
       })();
     </script>
     <script type="module" src="/src/main.jsx"></script>

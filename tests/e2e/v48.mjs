@@ -2,18 +2,23 @@
 import { launch, shot, BASE } from "./lib.mjs";
 const ok = (c, m) => { console.log(c ? "ok:" : "FAIL:", m); if (!c) process.exitCode = 1; };
 
-// ---- opening animation: shown on a cold start, gone once the app is up, quick on a reopen
+// ---- opening animation: ink in paper, drawn in a worker; gone once the app is up; calm on a quick reopen
+const splashState = (page) => page.evaluate(() => { const s = document.getElementById("splash"); return s ? { cls: s.className, mode: s.getAttribute("data-mode") } : null; });
 {
   const { browser, ctx, page, errors } = await launch();
   await page.goto(BASE, { waitUntil: "domcontentloaded" });
-  ok(await page.locator("#splash").count() === 1, "splash is in the page at first paint");
-  ok((await page.locator("#splash .sp-m").count()) === 7, "splash draws 7 strokes");
-  ok(!(await page.evaluate(() => document.getElementById("splash").classList.contains("calm"))), "cold start gets the full animation");
-  await page.waitForTimeout(500);
-  await shot(page, "v48-splash-mid");
+  ok(await page.locator("#splash canvas").count() === 1, "splash is in the page at first paint");
+  ok(await page.evaluate(() => document.querySelector('meta[name="theme-color"]').content) === "#ece3d0", "status bar matches the paper while the ink shows");
+  await page.waitForFunction(() => document.getElementById("splash")?.getAttribute("data-mode"), null, { timeout: 5000 });
+  const st = await splashState(page);
+  ok(st.mode === "worker", `ink is drawn off the main thread (${st.mode})`);
+  ok(!st.cls.includes("calm"), "cold start gets the full animation");
+  await page.waitForTimeout(900);
+  await shot(page, "v48-splash-ink");
   await page.waitForSelector(".welcome", { timeout: 10000 });
-  await page.waitForFunction(() => !document.getElementById("splash"), null, { timeout: 5000 });
+  await page.waitForFunction(() => !document.getElementById("splash"), null, { timeout: 6000 });
   ok(true, "splash removed after the app is up");
+  ok(await page.evaluate(() => document.querySelector('meta[name="theme-color"]').content) === "#151413", "status bar back to the app's colour");
   await shot(page, "v48-onboarding-ink");
   ok(await page.locator(".ink-brand").count() === 1, "onboarding draws the brand character in ink");
   // reopen within a minute: calm
@@ -23,6 +28,54 @@ const ok = (c, m) => { console.log(c ? "ok:" : "FAIL:", m); if (!c) process.exit
   await browser.close();
   ok(errors.length === 0, "no errors during start: " + errors.join(" | "));
 }
+// check the picture itself from a screenshot
+{
+  const { browser, ctx, page } = await launch({ context: { deviceScaleFactor: 1 } });
+  await page.route("**/assets/index-*.js", (r) => r.abort()); // keep the app from starting, so the ink stays
+  await page.goto(BASE, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => document.getElementById("splash")?.getAttribute("data-mode"), null, { timeout: 5000 });
+  await page.waitForTimeout(1600);
+  const buf = await page.screenshot();
+  const colours = await page.evaluate(async (b64) => {
+    const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+    const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+    const x = c.getContext("2d"); x.drawImage(img, 0, 0);
+    const w = img.width, h = img.height, size = Math.min(w * 0.84, h * 0.5, 400), cx = w / 2, cy = h * 0.44;
+    const at = (u, v) => Array.from(x.getImageData(Math.round(cx + (u - 0.5) * size), Math.round(cy + (v - 0.5) * size), 1, 1).data).slice(0, 3);
+    return { stroke: at(0.36, 0.385), sun: at(0.74, 0.27), paper: at(0.08, 0.92) };
+  }, buf.toString("base64"));
+  console.log("colours", JSON.stringify(colours));
+  const lum = ([r, g, b]) => 0.3 * r + 0.59 * g + 0.11 * b;
+  ok(lum(colours.stroke) < 70, "the brush stroke is black ink");
+  ok(colours.sun[0] > 150 && colours.sun[1] < 110, "the sun is vermilion");
+  ok(lum(colours.paper) > 190, "the rest is paper");
+  await ctx.close(); await browser.close();
+}
+// without OffscreenCanvas the page draws it itself; without WebGL the app still opens promptly
+{
+  const { browser, ctx, page, errors } = await launch();
+  await page.addInitScript(() => { delete HTMLCanvasElement.prototype.transferControlToOffscreen; });
+  await page.goto(BASE, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => { const s = document.getElementById("splash"); return !s || s.getAttribute("data-mode"); }, null, { timeout: 5000 });
+  const fb = await splashState(page);
+  ok(!fb || fb.mode === "page", `falls back to drawing on the page (${fb ? fb.mode : "app was quicker"})`);
+  await page.waitForFunction(() => !document.getElementById("splash"), null, { timeout: 8000 });
+  ok(errors.length === 0, "no errors in the fallback");
+  await ctx.close(); await browser.close();
+}
+{
+  const { browser, ctx, page } = await launch();
+  await page.addInitScript(() => {
+    delete HTMLCanvasElement.prototype.transferControlToOffscreen;
+    const g = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (t, o) { return /webgl/.test(t) ? null : g.call(this, t, o); };
+  });
+  const t0 = Date.now();
+  await page.goto(BASE, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => !document.getElementById("splash"), null, { timeout: 5000 });
+  ok(Date.now() - t0 < 4000, `no WebGL: the app opens without waiting for ink (${Date.now() - t0} ms)`);
+  await ctx.close(); await browser.close();
+}
 // reduced motion setting is respected from the very first paint
 {
   const { browser, ctx, page } = await launch({ context: { reducedMotion: "reduce" } });
@@ -30,13 +83,13 @@ const ok = (c, m) => { console.log(c ? "ok:" : "FAIL:", m); if (!c) process.exit
   ok(await page.evaluate(() => document.getElementById("splash").classList.contains("calm")), "reduced motion skips the long animation");
   await ctx.close(); await browser.close();
 }
-// light theme is mirrored for the splash background
+// light theme: the flood ends in the light background, and the quick version uses it too
 {
   const { browser, ctx, page } = await launch();
   await page.addInitScript(() => { try { localStorage.setItem("nt-theme", "light"); } catch {} });
   await page.goto(BASE, { waitUntil: "domcontentloaded" });
-  const bg = await page.evaluate(() => getComputedStyle(document.getElementById("splash")).backgroundColor);
-  ok(bg === "rgb(251, 247, 243)", "splash follows the light theme (" + bg + ")");
+  const bg = await page.evaluate(() => getComputedStyle(document.getElementById("splash")).getPropertyValue("--sp-bg").trim());
+  ok(bg === "#fbf7f3", "splash knows the light theme (" + bg + ")");
   await ctx.close(); await browser.close();
 }
 
