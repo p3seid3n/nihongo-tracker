@@ -24,6 +24,7 @@ export function ImportWizard({ onClose, onOpen }) {
   const input = useRef(null);
   const fileRef = useRef(null);
   const [withAudio, setWithAudio] = useState(true);
+  const [usePreset, setUsePreset] = useState(true);
   const [audioProg, setAudioProg] = useState({ value: 0, stored: 0 });
   const [audioDone, setAudioDone] = useState(null);
 
@@ -52,6 +53,7 @@ export function ImportWizard({ onClose, onOpen }) {
       try {
         const decks = parsed.decks.map((d) => ({ ...d, kind: sel[d.id]?.kind || d.kind }));
         const n = applyImport(store, { ...parsed, decks }, sel, { includeHistory: history });
+        if (usePreset && parsed.preset) store.updateSettings(presetSettings(parsed.preset, store.settings));
         // an imported Hiragana/Katakana deck replaces the built-in one in the daily plan
         const paused = [];
         for (const d of decks) {
@@ -164,10 +166,16 @@ export function ImportWizard({ onClose, onOpen }) {
                 <Switch checked={history} onChange={setHistory} label="Import review history" />
               </div>
             )}
+            {parsed.preset && presetSummary(parsed.preset) && (
+              <div className="card spread">
+                <div className="grow"><b>Use your Anki deck options</b><div className="small dim">{presetSummary(parsed.preset)}</div></div>
+                <Switch checked={usePreset} onChange={setUsePreset} label="Use your Anki deck options" />
+              </div>
+            )}
             {plan && plan.files.length > 0 && (
               <div className="card spread">
-                <div className="grow"><b>Include audio</b><div className="small dim">{fmtNum(plan.files.length)} recordings, about {Math.max(1, Math.round(plan.bytes / 1e6))} MB. Kept on this device only; other devices use the built-in voice.</div></div>
-                <Switch checked={withAudio} onChange={setWithAudio} label="Include audio" />
+                <div className="grow"><b>{plan.images && plan.audio ? "Include audio and pictures" : plan.images ? "Include pictures" : "Include audio"}</b><div className="small dim">{[plan.audio ? `${fmtNum(plan.audio)} recordings` : "", plan.images ? `${fmtNum(plan.images)} pictures` : ""].filter(Boolean).join(" and ")}, about {Math.max(1, Math.round(plan.bytes / 1e6))} MB. Kept on this device only{plan.audio ? "; other devices use the built-in voice" : ""}.</div></div>
+                <Switch checked={withAudio} onChange={setWithAudio} label="Include media" />
               </div>
             )}
             {parsed.warnings?.length > 0 && <Banner icon="info">{parsed.warnings.slice(0, 3).join(" ")}</Banner>}
@@ -193,8 +201,8 @@ export function ImportWizard({ onClose, onOpen }) {
               </svg>
               <div className="ring-label"><b>{Math.round(audioProg.value * 100)}%</b></div>
             </div>
-            <h2>Saving audio…</h2>
-            <p className="dim small">{fmtNum(audioProg.stored)} of {fmtNum(plan?.files.length || 0)} recordings</p>
+            <h2>{plan?.images && !plan?.audio ? "Saving pictures…" : plan?.images ? "Saving audio and pictures…" : "Saving audio…"}</h2>
+            <p className="dim small">{fmtNum(audioProg.stored)} of {fmtNum(plan?.files.length || 0)} files</p>
             <p className="hint">Keep this screen open. Your cards are already imported.</p>
           </div>
         )}
@@ -203,7 +211,7 @@ export function ImportWizard({ onClose, onOpen }) {
           <div className="stack center" style={{ alignItems: "center", paddingTop: 40 }}>
             <div className="big jp ink-host" lang="ja" style={{ fontSize: "4rem", color: "var(--primary)" }}><InkWord>完了</InkWord><Hanko className="hanko-corner" size={30} delay={300} haptic /></div>
             <h1>Imported {fmtNum(added)} cards</h1>
-            {audioDone && <p className="dim">{audioDone.error ? "The audio couldn't be saved, so cards will use the built-in voice." : `${fmtNum(audioDone.stored)} audio recordings saved${audioDone.failed ? `, ${fmtNum(audioDone.failed)} could not be read` : ""}.`}</p>}
+            {audioDone && <p className="dim">{audioDone.error ? "The audio couldn't be saved, so cards will use the built-in voice." : `${fmtNum(audioDone.stored)} ${plan?.images && !plan?.audio ? "pictures" : plan?.images ? "recordings and pictures" : "audio recordings"} saved${audioDone.failed ? `, ${fmtNum(audioDone.failed)} could not be read` : ""}.`}</p>}
             <p className="dim">Your decks are ready. Cards you marked as known will come back for a quick check over the next days.</p>
             {pausedDecks.length > 0 && <p className="hint">The built-in {pausedDecks.join(" and ")} deck{pausedDecks.length > 1 ? "s are" : " is"} paused so you don't study the same characters twice. You can turn {pausedDecks.length > 1 ? "them" : "it"} back on under Settings → Cards and decks.</p>}
             <div className="stack" style={{ width: "100%", marginTop: 24 }}>
@@ -216,3 +224,27 @@ export function ImportWizard({ onClose, onOpen }) {
     </div>
   );
 }
+
+/** The scheduling settings to take over from an Anki preset. */
+export function presetSettings(p, cur = {}) {
+  const out = {};
+  if (p.retention) out.retention = p.retention;
+  if (p.maxInterval) out.maxInterval = p.maxInterval;
+  if (p.learnSteps != null) out.learnSteps = p.learnSteps;
+  if (p.relearnSteps != null) out.relearnSteps = p.relearnSteps;
+  if (p.easyDays) out.easyDays = p.easyDays;
+  if (p.w) { out.fsrsW = p.w; out.fsrsFit = { at: Date.now(), n: 0, fromAnki: true }; }
+  void cur;
+  return out;
+}
+function presetSummary(p) {
+  const bits = [];
+  if (p.w) bits.push("your optimised FSRS parameters");
+  if (p.retention) bits.push(`desired retention ${Math.round(p.retention * 100)} %`);
+  if (p.learnSteps != null) bits.push(`learning steps ${p.learnSteps || "none"}`);
+  if (p.relearnSteps != null) bits.push(`relearning ${p.relearnSteps || "none"}`);
+  if (p.maxInterval) bits.push(`maximum interval ${p.maxInterval >= 36500 ? "100 years" : p.maxInterval + " days"}`);
+  if (p.easyDays && p.easyDays.some((x) => x !== 1)) bits.push("easy days");
+  return bits.length ? bits.join(", ").replace(/^./, (c) => c.toUpperCase()) + "." : "";
+}
+

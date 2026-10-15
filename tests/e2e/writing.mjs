@@ -103,7 +103,7 @@ await page.click("button:has-text('Done')");
 await page.waitForSelector(".plan-hero");
 await page.waitForTimeout(600);
 ok(await page.locator("button.step.done:has-text('Write 5 characters')").count() === 1, "writing step marked done on Today");
-const anims = await page.evaluate(() => document.getAnimations().filter((a) => a.effect?.target?.closest?.(".page") && a.playState === "running" && a.animationName !== "wobble").map((a) => (a.animationName || a.transitionProperty) + " on " + a.effect.target.className?.baseVal ?? a.effect.target.className));
+const anims = await page.evaluate(() => document.getAnimations().filter((a) => a.effect?.target?.closest?.(".page") && a.playState === "running" && a.timeline === document.timeline && a.animationName !== "wobble").map((a) => (a.animationName || a.transitionProperty) + " on " + a.effect.target.className?.baseVal ?? a.effect.target.className));
 ok(anims.length === 0, `no page animations replay after returning (${anims.join("; ")})`);
 
 // ---- from a study card

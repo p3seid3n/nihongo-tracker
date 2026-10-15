@@ -106,15 +106,15 @@ while (guard++ < 40) {
       }
     }
     await page.waitForTimeout(300);
-    if (await page.locator(".feedback").count()) { ok(true, "matching works starting from the English side"); await shot(page, "103-match-done"); await page.click(".feedback button"); }
+    if (await page.locator(".result-sheet").count()) { ok(true, "matching works starting from the English side"); await shot(page, "103-match-done"); await page.click(".result-sheet .rs-continue"); }
     continue;
   }
   if (await page.locator(".opt").count()) {
     await page.locator(".opt").first().click();
     await page.click(".sticky-actions button");
-    await page.waitForSelector(".feedback");
+    await page.waitForSelector(".result-sheet");
     if (!sawRecap && await page.locator(".recap").count()) { sawRecap = true; await page.waitForTimeout(500); await shot(page, "104-recap"); }
-    await page.click(".feedback button");
+    await page.click(".result-sheet .rs-continue");
     continue;
   }
   if (await page.locator(".tilebtn").count()) {
@@ -122,9 +122,9 @@ while (guard++ < 40) {
     const c = await tiles.count();
     for (let k = 0; k < c; k++) { const t = tiles.nth(k); if (await t.isEnabled()) await t.click(); }
     await page.click(".sticky-actions button");
-    await page.waitForSelector(".feedback");
+    await page.waitForSelector(".result-sheet");
     if (await page.locator(".recap").count()) sawRecap = true;
-    await page.click(".feedback button");
+    await page.click(".result-sheet .rs-continue");
     continue;
   }
   await page.waitForTimeout(100);

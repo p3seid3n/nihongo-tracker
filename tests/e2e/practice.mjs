@@ -19,7 +19,7 @@ await page.click("text=Back to library");
 async function runExercises(maxSteps = 120) {
   for (let i = 0; i < maxSteps; i++) {
     if (await page.locator("h1:has-text('complete'), h1:has-text('Almost'), h1:has-text('skipped'), h1:has-text('Not this time'), h1:has-text('Nothing to practise')").count()) return true;
-    const cont = page.locator(".feedback button");
+    const cont = page.locator(".result-sheet .rs-continue");
     if (await cont.count()) { await cont.click(); continue; }
     if (await page.locator(".match").count()) {
       await solveMatch(page);

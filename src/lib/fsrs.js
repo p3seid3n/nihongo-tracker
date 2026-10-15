@@ -1,5 +1,8 @@
-// FSRS-6 scheduler (Free Spaced Repetition Scheduler) with default parameters.
-// This is the same family of algorithm your Anki uses when FSRS is switched on.
+// FSRS-6 scheduler (Free Spaced Repetition Scheduler), matching Anki / AnkiDroid:
+//  - the FSRS-6 default parameters Anki ships, the same formulas (checked against the reference implementation
+//    ts-fsrs in tests/fsrs-reference.test.js), elapsed time counted in whole study days like Anki,
+//  - Anki's fuzz, its load balancer (due dates within the fuzz range go to the lighter days) and easy days,
+//  - learning and relearning steps, a maximum interval.
 //
 // A card record looks like:
 //   { st, s, d, due, last, reps, lapses, step, u }
@@ -7,12 +10,18 @@
 //   s: stability in days (time for recall probability to fall to 90%)
 //   d: difficulty 1..10
 //   due: ms timestamp, last: ms timestamp of last review
-import { MIN, DAY, addDays, dayStart } from "./time.js";
+import { MIN, DAY, addDays, dayStart, dayIndex, dayIndexToDate } from "./time.js";
 
 export const NEW = 0, LEARNING = 1, REVIEW = 2, RELEARNING = 3;
 export const AGAIN = 1, HARD = 2, GOOD = 3, EASY = 4;
 
+/** The FSRS-6 defaults (what Anki and ts-fsrs use before you optimise). */
 export const DEFAULT_W = [
+  0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666,
+  0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542,
+];
+/** The defaults this app used before 4.9 (kept to recognise them in old settings). */
+export const OLD_DEFAULT_W = [
   0.2172, 1.1771, 3.2602, 16.1507, 7.0114, 0.57, 2.0966, 0.0069, 1.5261, 0.112,
   1.0178, 1.849, 0.1133, 0.3127, 2.2934, 0.2191, 3.0004, 0.7536, 0.3332, 0.1437, 0.1542,
 ];
@@ -25,6 +34,7 @@ export const W_BOUNDS = [
   [0.001, 0.25], [0.001, 0.9], [0, 4], [0, 1],
   [1, 6], [0, 2], [0, 2], [0, 0.8], [0.1, 0.8],
 ];
+// (w0..w3 may go up to 100 days: the limit Anki uses for initial stability)
 export const validWeights = (w) =>
   Array.isArray(w) && w.length === W_BOUNDS.length && w.every((x, i) => Number.isFinite(x) && x >= W_BOUNDS[i][0] && x <= W_BOUNDS[i][1]);
 
@@ -40,9 +50,12 @@ export const DEFAULT_CFG = {
   learningSteps: [1 * MIN, 10 * MIN],
   relearningSteps: [10 * MIN],
   fuzz: true,
+  // load: { dueOn(dayIdx) -> number of reviews already due that day, easyDays: [Mon..Sun] 1 normal, 0.5 reduced, 0 minimum }
+  load: null,
 };
 
 const S_MIN = 0.001;
+const S_INIT_MIN = 0.1;
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
 const decay = (w) => -w[20];
@@ -61,14 +74,15 @@ export function intervalFor(s, retention, w = DEFAULT_W, maxInterval = 36500) {
   return clamp(Math.round(ivl), 1, maxInterval);
 }
 
-export const initStability = (g, w = DEFAULT_W) => Math.max(S_MIN, w[g - 1]);
-export const initDifficulty = (g, w = DEFAULT_W) =>
-  clamp(w[4] - Math.exp(w[5] * (g - 1)) + 1, 1, 10);
+export const initStability = (g, w = DEFAULT_W) => Math.max(S_INIT_MIN, w[g - 1]);
+/** D0(G) without clamping: mean reversion pulls towards D0(Easy), which may lie below 1. */
+const rawInitDifficulty = (g, w) => w[4] - Math.exp(w[5] * (g - 1)) + 1;
+export const initDifficulty = (g, w = DEFAULT_W) => clamp(rawInitDifficulty(g, w), 1, 10);
 
 export function nextDifficulty(d, g, w = DEFAULT_W) {
   const delta = -w[6] * (g - 3);
   const damped = d + (delta * (10 - d)) / 9;
-  const reverted = w[7] * initDifficulty(4, w) + (1 - w[7]) * damped;
+  const reverted = w[7] * rawInitDifficulty(4, w) + (1 - w[7]) * damped;
   return clamp(reverted, 1, 10);
 }
 
@@ -92,8 +106,16 @@ export function nextForgetStability(d, s, r, w = DEFAULT_W) {
 
 export function nextShortTermStability(s, g, w = DEFAULT_W) {
   let inc = Math.exp(w[17] * (g - 3 + w[18])) * Math.pow(s, -w[19]);
-  if (g >= GOOD) inc = Math.max(inc, 1);
+  if (g >= HARD) inc = Math.max(inc, 1);
   return clamp(s * inc, S_MIN, 36500);
+}
+
+/** The memory state after an answer: same-day answers use the short-term formula (as in Anki). */
+export function nextMemory(d, s, elapsedDays, g, w = DEFAULT_W) {
+  if (elapsedDays === 0) return { s: nextShortTermStability(s, g, w), d: nextDifficulty(d, g, w) };
+  const r = retrievability(elapsedDays, s, w);
+  const ns = g === AGAIN ? nextForgetStability(d, s, r, w) : nextRecallStability(d, s, r, g, w);
+  return { s: ns, d: nextDifficulty(d, g, w) };
 }
 
 // ---------------------------------------------------------------------------
@@ -114,8 +136,8 @@ function seeded(seed) {
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
-function fuzzed(ivl, seedKey, maxInterval) {
-  if (ivl < 3) return ivl;
+/** Anki's fuzz range for an interval: a few percent either side, never before the time already elapsed. */
+export function fuzzRange(ivl, elapsedDays, maxInterval) {
   const ranges = [
     [2.5, 7, 0.15],
     [7, 20, 0.1],
@@ -123,12 +145,39 @@ function fuzzed(ivl, seedKey, maxInterval) {
   ];
   let delta = 1;
   for (const [a, b, f] of ranges) delta += f * Math.max(Math.min(ivl, b) - a, 0);
-  let lo = Math.max(2, Math.round(ivl - delta));
-  let hi = Math.min(Math.round(ivl + delta), maxInterval);
-  if (ivl > maxInterval) return maxInterval;
-  if (lo > hi) lo = hi;
+  const iv = Math.min(ivl, maxInterval);
+  let lo = Math.max(2, Math.round(iv - delta));
+  const hi = Math.min(Math.round(iv + delta), maxInterval);
+  if (iv > elapsedDays) lo = Math.max(lo, elapsedDays + 1);
+  return { lo: Math.min(lo, hi), hi };
+}
+
+/**
+ * Pick the interval. Below 2.5 days there is no fuzz. With a load balancer (Anki 24.11+), days in the fuzz range
+ * that already have fewer reviews are preferred (weight 1 / reviews², slightly favouring the earlier days),
+ * and easy days take a lower share. Otherwise a deterministic random day in the range.
+ */
+export function pickInterval(ivl, { elapsedDays = 0, maxInterval = 36500, seedKey = "", now = Date.now(), load = null, fuzz = true } = {}) {
+  ivl = Math.min(Math.max(1, Math.round(ivl)), maxInterval);
+  if (!fuzz || ivl < 2.5) return ivl;
+  const { lo, hi } = fuzzRange(ivl, elapsedDays, maxInterval);
   const r = seeded(hashStr(seedKey));
-  return clamp(Math.floor(r * (hi - lo + 1) + lo), 1, maxInterval);
+  if (!load || typeof load.dueOn !== "function" || hi - lo < 1) return clamp(Math.floor(r * (hi - lo + 1) + lo), 1, maxInterval);
+  const today = dayIndex(now);
+  const weights = [];
+  let sum = 0;
+  for (let d = lo; d <= hi; d++) {
+    const day = today + d;
+    const n = Math.max(0, load.dueOn(day) || 0);
+    const wd = dayIndexToDate(day).getDay(); // 0 = Sunday
+    const easy = load.easyDays ? load.easyDays[(wd + 6) % 7] : 1; // settings are Monday first, like Anki
+    const share = easy == null ? 1 : easy <= 0 ? 0.0001 : easy;
+    const w = (1 / Math.pow(n + 1, 2)) * (1 / d) * share;
+    weights.push(w); sum += w;
+  }
+  let x = r * sum;
+  for (let k = 0; k < weights.length; k++) { x -= weights[k]; if (x <= 0) return lo + k; }
+  return hi;
 }
 
 function stepDelay(steps, idx, grade) {
@@ -142,29 +191,38 @@ function stepDelay(steps, idx, grade) {
 }
 
 /**
+ * Whole days since the last review, counted the way Anki does: from the last review to the start of the next
+ * study day (4 am), rounded down. A review earlier the same study day counts as 0.
+ */
+export const elapsedStudyDays = (last, now) => (last ? Math.max(0, Math.floor((addDays(now, 1) - last) / DAY)) : 0);
+
+/**
  * Apply a rating. Returns the new card record (never mutates the input).
  * `card` may be null/undefined for a card that has never been reviewed.
  */
 export function review(card, grade, now, cfg = DEFAULT_CFG, seedKey = "") {
-  const { w, retention, maxInterval } = cfg;
+  const { w, retention } = cfg;
+  const maxInterval = Math.max(1, Math.round(cfg.maxInterval || 36500));
   const c = card || { st: NEW, s: 0, d: 0, due: now, last: 0, reps: 0, lapses: 0, step: 0 };
   const out = { ...c, last: now, reps: (c.reps || 0) + 1, u: now };
   const learnSteps = cfg.learningSteps || [];
   const relearnSteps = cfg.relearningSteps || [];
+  const isNew = c.st === NEW || !card;
+  const elapsedDays = isNew ? 0 : elapsedStudyDays(c.last, now);
+  const pick = (ivl, extra) => pickInterval(ivl, { elapsedDays, maxInterval, seedKey: `${seedKey}:${out.reps}:${extra || ""}`, now, load: cfg.load, fuzz: cfg.fuzz });
 
   const graduate = (s, d, extraSeed) => {
     out.st = REVIEW;
     out.s = s;
     out.d = d;
     out.step = 0;
-    let ivl = intervalFor(s, retention, w, maxInterval);
-    if (cfg.fuzz) ivl = fuzzed(ivl, `${seedKey}:${out.reps}:${extraSeed || ""}`, maxInterval);
+    const ivl = pick(intervalFor(s, retention, w, maxInterval), extraSeed);
     out.due = addDays(now, ivl);
     out.ivl = ivl;
     return out;
   };
 
-  if (c.st === NEW || !card) {
+  if (isNew) {
     const s = initStability(grade, w);
     const d = initDifficulty(grade, w);
     out.s = s;
@@ -181,25 +239,25 @@ export function review(card, grade, now, cfg = DEFAULT_CFG, seedKey = "") {
     return out;
   }
 
-  const elapsedDays = Math.max(0, (now - (c.last || now)) / DAY);
+  const mem = nextMemory(c.d, c.s, elapsedDays, grade, w);
 
   if (c.st === LEARNING || c.st === RELEARNING) {
     const steps = c.st === LEARNING ? learnSteps : relearnSteps;
-    const s = elapsedDays < 1 ? nextShortTermStability(c.s, grade, w) : nextRecallStability(c.d, c.s, retrievability(elapsedDays, c.s, w), grade, w);
-    const d = nextDifficulty(c.d, grade, w);
-    out.s = s;
-    out.d = d;
-    if (grade === EASY) return graduate(s, d, "l");
+    out.s = mem.s;
+    out.d = mem.d;
+    if (grade === EASY) return graduate(mem.s, mem.d, "l");
     if (grade === AGAIN) {
       out.st = c.st;
       out.step = 0;
+      if (!steps.length) return graduate(mem.s, mem.d, "l");
       out.due = now + stepDelay(steps, 0, AGAIN);
     } else if (grade === HARD) {
       out.st = c.st;
+      if (!steps.length) return graduate(mem.s, mem.d, "l");
       out.due = now + stepDelay(steps, c.step || 0, HARD);
     } else {
       const next = (c.step || 0) + 1;
-      if (next >= steps.length) return graduate(s, d, "l");
+      if (next >= steps.length) return graduate(mem.s, mem.d, "l");
       out.st = c.st;
       out.step = next;
       out.due = now + stepDelay(steps, next, GOOD);
@@ -209,14 +267,11 @@ export function review(card, grade, now, cfg = DEFAULT_CFG, seedKey = "") {
   }
 
   // Review state
-  const r = retrievability(elapsedDays, c.s, w);
-  const d = nextDifficulty(c.d, grade, w);
-  out.d = d;
-
+  out.d = mem.d;
   if (grade === AGAIN) {
     out.lapses = (c.lapses || 0) + 1;
-    out.s = nextForgetStability(c.d, c.s, r, w);
-    if (relearnSteps.length === 0) return graduate(out.s, d, "f");
+    out.s = mem.s;
+    if (relearnSteps.length === 0) return graduate(out.s, mem.d, "f");
     out.st = RELEARNING;
     out.step = 0;
     out.due = now + stepDelay(relearnSteps, 0, AGAIN);
@@ -224,29 +279,20 @@ export function review(card, grade, now, cfg = DEFAULT_CFG, seedKey = "") {
     return out;
   }
 
-  if (elapsedDays < 1) {
-    // Reviewed again the same day (e.g. "study more"): small short-term update.
-    out.s = nextShortTermStability(c.s, grade, w);
-    return graduate(out.s, d, "s");
-  }
-
-  // Compute all three passing intervals so we can keep hard <= good <= easy.
-  const sH = nextRecallStability(c.d, c.s, r, HARD, w);
-  const sG = nextRecallStability(c.d, c.s, r, GOOD, w);
-  const sE = nextRecallStability(c.d, c.s, r, EASY, w);
-  let iH = intervalFor(sH, retention, w, maxInterval);
-  let iG = intervalFor(sG, retention, w, maxInterval);
-  let iE = intervalFor(sE, retention, w, maxInterval);
+  // Compute all three passing intervals so we can keep hard < good < easy (as Anki does).
+  const sH = nextMemory(c.d, c.s, elapsedDays, HARD, w).s;
+  const sG = nextMemory(c.d, c.s, elapsedDays, GOOD, w).s;
+  const sE = nextMemory(c.d, c.s, elapsedDays, EASY, w).s;
+  let iH = pick(intervalFor(sH, retention, w, maxInterval), "h");
+  let iG = pick(intervalFor(sG, retention, w, maxInterval), "g");
   iH = Math.min(iH, iG);
   iG = Math.max(iG, iH + 1);
-  iE = Math.max(iE, iG + 1);
-  const pick = { [HARD]: [sH, iH], [GOOD]: [sG, iG], [EASY]: [sE, iE] }[grade];
+  const iE = Math.max(pick(intervalFor(sE, retention, w, maxInterval), "e"), iG + 1);
+  const chosen = { [HARD]: [sH, iH], [GOOD]: [sG, iG], [EASY]: [sE, iE] }[grade];
   out.st = REVIEW;
-  out.s = pick[0];
+  out.s = chosen[0];
   out.step = 0;
-  let ivl = Math.min(pick[1], maxInterval);
-  if (cfg.fuzz) ivl = fuzzed(ivl, `${seedKey}:${out.reps}`, maxInterval);
-  // Keep hard < good < easy even after fuzz by only fuzzing within safe bounds.
+  const ivl = Math.min(chosen[1], maxInterval);
   out.due = addDays(now, ivl);
   out.ivl = ivl;
   return out;

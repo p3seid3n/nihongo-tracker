@@ -3,14 +3,14 @@ import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
 import { useApp, plural, Burst } from "./common.jsx";
 import { InkWord, Hanko } from "./Ink.jsx";
-import { buildSession, buildCounts, LEARN_AHEAD } from "../lib/queue.js";
+import { buildSession, buildCounts, todayCounts, LEARN_AHEAD } from "../lib/queue.js";
 import { previewDelays, LEARNING, RELEARNING, NEW } from "../lib/fsrs.js";
 import { fmtSpan } from "../lib/time.js";
 import { deckOf, isProd, baseId } from "../lib/ids.js";
 import { kanjiOf } from "../lib/jp.js";
 import { computeStats } from "../lib/stats.js";
 import * as hap from "../lib/haptics.js";
-import { audioPlan, say, stop as stopAudio, wordPart, sentencePart } from "../lib/audio.js";
+import { audioPlan, say, stop as stopAudio, wordPart, sentencePart, mediaUrl } from "../lib/audio.js";
 import { plainOf, readingOf } from "../lib/jp.js";
 import { SpeakBtn, MicBtn } from "./Voice.jsx";
 import { unitsFromMarkup } from "../lib/pronounce.js";
@@ -20,6 +20,8 @@ import { NoteSheet, kanjiPartsOf } from "./Leech.jsx";
 import { SentenceIndex, pickSentence } from "../lib/sentenceIndex.js";
 import { isLeechHit } from "../lib/leech.js";
 import { PitchLine } from "./Pitch.jsx";
+import { readingsFromCards, cardFurigana } from "../lib/furigana.js";
+import { parseFuri } from "../lib/jp.js";
 
 /** Decide which card comes next. Due learning cards first, then the main list, weak spots, then waiting learning cards. */
 function pickNext(store, main, learnQ, weak = [], now = Date.now()) {
@@ -40,7 +42,12 @@ export function Study({ opts = {}, onClose, onOpen }) {
   const [initial] = useState(() => {
     const s = buildSession(store, Date.now(), opts);
     const learnQ = s.learning.map((id) => ({ id, due: store.rec(id)?.due || 0 }));
-    return { main: s.main, learnQ, weak: s.weak || [], total: s.main.length + s.learning.length + (s.weak || []).length };
+    // the bar covers the whole day: cards already finished earlier today count as done, so leaving and coming back
+    // keeps it where it was instead of starting at zero
+    const pending = new Set([...s.learning, ...s.main, ...(s.weak || [])]);
+    let doneBefore = 0;
+    for (const id of todayCounts(store, Date.now()).seen) if (!pending.has(id) && store.card(id)) doneBefore++;
+    return { main: s.main, learnQ, weak: s.weak || [], total: s.main.length + s.learning.length + (s.weak || []).length, doneBefore };
   });
   const [main, setMain] = useState(initial.main);
   const [learnQ, setLearnQ] = useState(initial.learnQ);
@@ -54,6 +61,12 @@ export function Study({ opts = {}, onClose, onOpen }) {
   const [tally, setTally] = useState({ 1: 0, 2: 0, 3: 0, 4: 0, ms: 0 });
   const startRef = useRef(Date.now());
   const wordIndex = useRef(null);
+  // which kanji read how, learned from all your vocabulary: lets furigana sit over each kanji
+  const kanjiReadings = useMemo(() => {
+    const cards = [];
+    for (const d of store.deckList()) if (d.kind === "vocab") cards.push(...Object.values(store.content[d.id] || {}));
+    return readingsFromCards(cards);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const lexRef = useRef(null);
   const [sIndex, setSIndex] = useState(null);
   const [guess, setGuess] = useState(""); // pretesting: what you think a new card means, before you see it
@@ -210,7 +223,8 @@ export function Study({ opts = {}, onClose, onOpen }) {
   if (!cur) return <Summary store={store} tally={tally} total={finished} onClose={onClose} onOpen={onOpen} opts={opts} />;
   if (!card) return null;
 
-  const pct = initial.total ? Math.min(100, Math.round((finished / initial.total) * 100)) : 0;
+  const dayTotal = initial.total + initial.doneBefore;
+  const pct = dayTotal ? Math.min(100, ((finished + initial.doneBefore) / dayTotal) * 100) : 0;
   const kind = deck?.kind;
   const curIsNew = cur.src === "main" && (!rec || rec.st === NEW);
   const curIsRev = cur.src === "main" && !curIsNew;
@@ -234,7 +248,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
       <div className="study">
         <div className="study-top">
           <button className="icon-btn" onClick={onClose} aria-label="Close session"><Icon name="close" /></button>
-          <div className="study-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${pct}%` }} /></div>
+          <div className="study-bar" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${pct}%` }} /></div>
           <button className="icon-btn" onClick={undo} disabled={!history.length} aria-label="Undo last answer"><Icon name="undo" /></button>
           <button className="icon-btn" onClick={suspend} aria-label="Suspend this card"><Icon name="pause" /></button>
         </div>
@@ -255,9 +269,9 @@ export function Study({ opts = {}, onClose, onOpen }) {
               </div>
             </div>
             <div className="flash-scroll">
-              {isP ? <RecallPrompt card={card} /> : <Front kind={kind} card={card} />}
-              {shown && isP && <><RecallVerdict res={recallRes} /><div className="word-big recall-word" lang="ja">{card.f}</div></>}
-              {shown && <Back kind={kind} card={card} related={related} sentence={chosen} recall={isP} />}
+              {isP ? <RecallPrompt card={card} /> : <Front kind={kind} card={card} shown={shown} furi={kind === "vocab" ? cardFurigana(card, kanjiReadings) : null} />}
+              {shown && isP && <><RecallVerdict res={recallRes} /><div className="word-big recall-word" lang="ja"><WordRuby card={card} furi={cardFurigana(card, kanjiReadings)} shown /></div></>}
+              {shown && <Back kind={kind} card={card} related={related} sentence={chosen} recall={isP} furi={kind === "vocab" ? cardFurigana(card, kanjiReadings) : null} />}
               {shown && baseRec?.note && <div className="mnemo"><span className="label">My mnemonic</span><div>{baseRec.note}</div></div>}
               {shown && kind !== "kana" && <button type="button" className="link-btn" onClick={() => setSheet({ type: "note", id: noteId })}><Icon name="edit" size={16} /> {baseRec?.note ? "Edit my mnemonic" : "Add my mnemonic"}</button>}
               {shown && pretest && <div className="mnemo guess-note"><span className="label">Your guess</span><div>{guess.trim() || "No guess"}</div></div>}
@@ -292,21 +306,50 @@ export function Study({ opts = {}, onClose, onOpen }) {
   );
 }
 
-function Front({ kind, card }) {
+/**
+ * The word with furigana over each kanji. The readings are laid out from the start (invisible) so the word doesn't
+ * jump when the answer is revealed; they fade in with it.
+ */
+function WordRuby({ card, furi, shown }) {
+  if (!furi) return <>{card.f}</>;
+  return (
+    <span className={`word-ruby ${shown ? "on" : ""}`}>
+      {parseFuri(furi).map((s, i) => (s.r == null ? <React.Fragment key={i}>{s.t}</React.Fragment> : <ruby key={i}>{s.t}<rt>{s.r}</rt></ruby>))}
+    </span>
+  );
+}
+
+function Front({ kind, card, shown, furi }) {
   if (kind === "kanji") return <div className="kanji-big" lang="ja">{card.f}</div>;
   if (kind === "kana") return <div className="kana-big" lang="ja">{card.f}</div>;
-  if (kind === "vocab") return <div className="word-big" lang="ja">{card.f}</div>;
+  if (kind === "vocab") return <div className="word-big" lang="ja" data-word={card.f}><WordRuby card={card} furi={furi} shown={shown} /></div>;
   return <div className="word-big" lang="ja">{card.f}</div>;
 }
 
-function Back({ kind, card, related, sentence, recall }) {
+/** A picture from an imported deck (kana mnemonics and the like). Shows nothing when the file isn't on this device. */
+export function CardPicture({ name, alt = "" }) {
+  const [url, setUrl] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    setUrl(null); setLoaded(false);
+    mediaUrl(name).then((u) => { if (alive) setUrl(u); });
+    return () => { alive = false; };
+  }, [name]);
+  if (!url) return null;
+  return <img className={`card-pic ${loaded ? "in" : ""}`} src={url} alt={alt} onLoad={() => setLoaded(true)} draggable={false} />;
+}
+
+function Back({ kind, card, related, sentence, recall, furi }) {
   const x = card.x || {};
   if (kind === "vocab") {
     const s = sentence || ((x.sentF || x.sent) ? { card, markup: x.sentF || x.sent, en: x.sentE } : null);
     return (
       <div className="answer">
-        {card.r && card.r !== plainOf(card.f || "") && <div className="reading" lang="ja">{card.r}</div>}
+        {/* the reading sits over the word as furigana; it's only spelled out here when it can't be lined up with the kanji */}
+        {card.r && card.r !== plainOf(card.f || "") && !furi && <div className="reading" lang="ja">{card.r}</div>}
         {!recall && <div className="main">{card.m}</div>}
+        {x.img && <CardPicture name={x.img} alt={card.m || card.f} />}
         {x.pitch && <PitchLine value={x.pitch} />}
         {s && (
           <div className="box">
@@ -323,6 +366,7 @@ function Back({ kind, card, related, sentence, recall }) {
     return (
       <div className="answer">
         <div className="main">{card.m}</div>
+        {x.img && <CardPicture name={x.img} alt={`Picture for ${card.f}`} />}
         {x.story && <div className="extra">{x.story}</div>}
         {related.length > 0 && (
           <div className="box">
@@ -339,6 +383,7 @@ function Back({ kind, card, related, sentence, recall }) {
   return (
     <div className="answer">
       <div className="main">{card.m}</div>
+      {x.img && <CardPicture name={x.img} alt={`Picture for ${card.f}`} />}
       {x.story && <div className="extra">{x.story}</div>}
     </div>
   );

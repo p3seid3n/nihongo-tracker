@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Store, idbBackend } from "./lib/store.js";
 import { SyncController } from "./lib/syncController.js";
 import { supabase, cloudConfigured } from "./lib/supabase.js";
@@ -19,6 +19,7 @@ import { Study } from "./ui/Study.jsx";
 import { Learn, LessonPlayer, PracticePlayer } from "./ui/Learn.jsx";
 import { Practice } from "./ui/Practice.jsx";
 import { ImportWizard } from "./ui/ImportWizard.jsx";
+import { AnkiExport } from "./ui/AnkiExport.jsx";
 import { WritingPlayer } from "./ui/Writing.jsx";
 import { Reader } from "./ui/Reader.jsx";
 import { Output } from "./ui/Output.jsx";
@@ -149,6 +150,37 @@ export default function App() {
     if (window.history.state && window.history.state.nt) window.history.back();
     else dismissOverlay();
   }, [dismissOverlay]);
+  // the dock: tabs slide in from the side you moved towards, and the pill flows to its new place like a drop
+  const tabIdx = Math.max(0, TABS.findIndex((t) => t.id === tab));
+  const prevIdx = useRef(tabIdx);
+  const [tabDir, setTabDir] = useState("");
+  const pillRef = useRef(null);
+  useLayoutEffect(() => {
+    const from = prevIdx.current;
+    prevIdx.current = tabIdx;
+    if (from === tabIdx) return;
+    setTabDir(tabIdx > from ? "r" : "l");
+    const pill = pillRef.current;
+    const reduced = document.documentElement.dataset.motion === "reduced" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!pill || reduced || !pill.animate) return;
+    const vertical = window.matchMedia?.("(min-width: 900px)").matches;
+    const at = (i, sx = 1, sy = 1) => (vertical ? `translateY(${i * 100}%) scale(${sy}, ${sx})` : `translateX(${i * 100}%) scale(${sx}, ${sy})`);
+    const far = Math.abs(tabIdx - from);
+    const stretch = 1 + Math.min(0.42, 0.16 + far * 0.08);
+    pill.animate([
+      { transform: at(from) },
+      { transform: at(from + (tabIdx - from) * 0.42, stretch, 1 - (stretch - 1) * 0.45), offset: 0.38 },
+      { transform: at(tabIdx, 0.94, 1.05), offset: 0.78 },
+      { transform: at(tabIdx) },
+    ], { duration: 420 + far * 40, easing: "cubic-bezier(0.3, 0.7, 0.2, 1)" });
+  }, [tabIdx]);
+  const glassLight = useCallback((e) => {
+    const el = e.currentTarget;
+    if (e.type === "pointerleave") { el.style.removeProperty("--mx"); return; }
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--mx", `${Math.round(((e.clientX - r.left) / r.width) * 100)}%`);
+  }, []);
+
   const go = useCallback((t) => { setTab(t); scrollToTop(); }, []);
   useEffect(() => {
     document.body.style.overflow = overlay ? "hidden" : "";
@@ -312,13 +344,13 @@ export default function App() {
   } else {
     body = (
       <div className="app" inert={overlay ? "" : undefined} aria-hidden={overlay ? "true" : undefined}>
-        <div className="app-scroll">
+        <div className="app-scroll" data-dir={tabDir}>
           {store.saveError && <div style={{ position: "sticky", top: 0, zIndex: 40, padding: 8 }}><Banner kind="err" icon="warn">Can't save to this device (storage full or blocked). Export a backup from Settings.</Banner></div>}
           <PauseCtx.Provider value={!!overlay}><Tabs tab={tab} /></PauseCtx.Provider>
         </div>
         <nav className="nav" aria-label="Main">
-            <div className="nav-inner" style={{ "--i": Math.max(0, TABS.findIndex((t) => t.id === tab)) }}>
-              <span className="nav-pill" aria-hidden="true" />
+            <div className="nav-inner" style={{ "--i": Math.max(0, TABS.findIndex((t) => t.id === tab)) }} onPointerMove={glassLight} onPointerLeave={glassLight}>
+              <span className="nav-pill" aria-hidden="true" ref={pillRef} />
               {TABS.map((t) => (
                 <button key={t.id} className="nav-item" aria-current={tab === t.id ? "page" : undefined} onClick={() => go(t.id)}>
                   <Icon name={t.icon} />
@@ -358,6 +390,7 @@ function OverlayView({ o, close, open }) {
     case "pitch": return <PitchPractice key={o.key} onClose={close} />;
     case "write": return <WritingPlayer key={o.key} items={o.items || []} onClose={close} />;
     case "import": return <ImportWizard key={o.key} onClose={close} onOpen={(n) => open(n)} />;
+    case "ankiExport": return <AnkiExport key={o.key} onClose={close} />;
     case "auth": return <div className="fullscreen" key={o.key}><Auth onDone={close} onSkip={close} skipLabel="Not now" /></div>;
     default: return null;
   }

@@ -49,6 +49,20 @@ async function urlFor(name) {
   return u;
 }
 
+/** The bytes of a stored media file (for exporting), or null. */
+export async function getClipBytes(name) {
+  try {
+    const blob = await idbGet(name, clips());
+    return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+  } catch { return null; }
+}
+
+/** Object URL of a stored media file (a picture from an imported deck), or null when it isn't on this device. */
+export async function mediaUrl(name) {
+  if (!name) return null;
+  try { return await urlFor(name); } catch { return null; }
+}
+
 /** Plays a stored clip. Resolves true when it finished, false if missing or blocked. */
 export async function playClip(name, myToken = ++token) {
   const a = audioEl();

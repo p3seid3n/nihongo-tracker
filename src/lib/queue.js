@@ -8,17 +8,21 @@ import { recallEligible } from "./recall.js";
 export const LEARN_AHEAD = 20 * MIN;
 export { ACTIVITY };
 
-/** Counts for the current study day, derived from the review log. */
+/**
+ * Counts for the current study day, derived from the review log.
+ * Effort is charged once per card per day (its first answer): learning steps and Again repeats are part of
+ * finishing that card, so "done" plus "still planned" always adds up to the same day.
+ */
 export function todayCounts(store, now = Date.now()) {
   const key = dayKey(now);
   const rows = store.log[monthKey(now)] || [];
-  const out = { newByDeck: {}, reviews: 0, total: 0, ms: 0, lessons: 0, effort: 0, prodNew: 0 };
+  const out = { newByDeck: {}, reviews: 0, total: 0, ms: 0, lessons: 0, effort: 0, prodNew: 0, seen: new Set() };
   for (const r of rows) {
     if (r[2] === 0 || dayKey(r[0]) !== key) continue;
     out.ms += r[3] || 0;
     if (r[4] === ACTIVITY) { out.lessons++; continue; }
     out.total++;
-    out.effort += rowCost(r);
+    if (!out.seen.has(r[1])) { out.effort += rowCost(r); out.seen.add(r[1]); }
     if (r[4] === NEW) {
       if (isProd(r[1])) { out.prodNew++; continue; }
       const d = r[1].slice(0, r[1].indexOf("."));
@@ -88,18 +92,27 @@ function deckStatus(store, deck, now, today, opts, cfg) {
   const learning = [], reviews = [], fresh = [], prodReviews = [], prodFresh = [];
   const today0 = dayStart(now);
   const vocab = deck.kind === "vocab";
+  const bury = store.settings.burySiblings !== false;
   for (const id of ids) {
     const r = prog[id];
     if (r && r.sus) continue;
+    let baseBusy = false;
     if (!r || r.st === NEW) fresh.push(id);
     else if (r.st === LEARNING || r.st === RELEARNING) {
+      baseBusy = true;
       if (r.due <= now + LEARN_AHEAD) learning.push(id);
     } else if (r.st === REVIEW) {
-      if (dayStart(r.due) <= today0) reviews.push(id);
+      if (dayStart(r.due) <= today0) {
+        // like Anki's "bury review siblings": once the recall card was answered today, the recognition card waits
+        if (bury && vocab && cfg.recall && today.seen.has(prodId(id))) continue;
+        reviews.push(id); baseBusy = true;
+      }
     }
     if (vocab && cfg.recall) {
       const pid = prodId(id);
       const pr = prog[pid];
+      // siblings: the recall card stays away on a day its word is already being studied
+      if (bury && (baseBusy || today.seen.has(id)) && !(pr && (pr.st === LEARNING || pr.st === RELEARNING))) continue;
       if (pr && !pr.sus && pr.st !== NEW) {
         if (pr.st === LEARNING || pr.st === RELEARNING) { if (pr.due <= now + LEARN_AHEAD) learning.push(pid); }
         else if (pr.st === REVIEW && dayStart(pr.due) <= today0) prodReviews.push(pid);
@@ -120,14 +133,16 @@ export function buildCounts(store, now = Date.now(), opts = {}) {
 
   const sum = (f) => per.reduce((n, p) => n + f(p), 0);
   const learnN = sum((p) => p.learning.length);
+  // a learning card answered earlier today is already paid for
+  const learnCost = sum((p) => p.learning.filter((id) => !today.seen.has(id)).length) * COST.review;
   const dueTotal = sum((p) => p.reviews.length + p.prodReviews.length);
-  const dueEffort = learnN * COST.review + sum((p) => p.reviews.length) * COST.review + sum((p) => p.prodReviews.length) * COST.recallReview;
+  const dueEffort = learnCost + sum((p) => p.reviews.length) * COST.review + sum((p) => p.prodReviews.length) * COST.recallReview;
   const throttle = throttleFor(store, dueEffort, cfg, now);
 
   const lift = !!opts.extraReviews;
   const extra = opts.extraNew || 0;
   // asking for more new cards also raises today's budget by what they cost
-  let left = lift ? Infinity : Math.max(0, cfg.budget - today.effort - learnN * COST.review) + extra * COST.new;
+  let left = lift ? Infinity : Math.max(0, cfg.budget - today.effort - learnCost) + extra * COST.new;
   const reviewCap = lift ? Infinity : Math.max(0, (store.settings.maxReviews || 200) - today.reviews);
 
   // due reviews: oldest first, weakest first; recall cards cost more
@@ -136,7 +151,7 @@ export function buildCounts(store, now = Date.now(), opts = {}) {
     return { id, day: dayIndex(r.due), r: currentRetrievability(r, now) };
   }).sort((a, b) => a.day - b.day || a.r - b.r);
   const reviewsSel = [];
-  let deferred = 0, planned = learnN * COST.review;
+  let deferred = 0, planned = learnCost;
   for (const x of dueList) {
     const cost = isProd(x.id) ? COST.recallReview : COST.review;
     if (reviewsSel.length >= reviewCap || cost > left) { deferred++; continue; }

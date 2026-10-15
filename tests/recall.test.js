@@ -205,7 +205,7 @@ describe("effort budget", () => {
     expect(all.deferred).toBe(0);
   });
   it("recall reviews cost three times as much as normal reviews", async () => {
-    const s = await fresh({ effortBudget: 40, maxReviews: 500, autoThrottle: false, recall: true });
+    const s = await fresh({ effortBudget: 40, maxReviews: 500, autoThrottle: false, recall: true, burySiblings: false });
     const ids = vocabDeck(s, 24);
     stable(s, ids, { due: NOW + 30 * DAY });
     for (const id of ids) { const e = s.reviewCard(prodId(id), 3, 1000, NOW - 30 * DAY); void e; }

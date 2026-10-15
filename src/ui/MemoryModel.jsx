@@ -52,7 +52,7 @@ export default function MemoryModel({ Section, Row }) {
 
   return (
     <Section title="Memory model" hint="The scheduler guesses how fast you forget. After enough reviews it can learn your own forgetting curve instead of the average one. It runs on this device, is checked on cards it was not trained on, and is only offered when it predicts those better. Cards you imported as already known have no history, so only cards you started in the app count.">
-      <Row title={custom ? "Using your own weights" : "Using the standard weights"} sub={custom && s.fsrsFit ? `Fitted ${dateText(s.fsrsFit.at)} from ${plural(s.fsrsFit.n, "review")}` : `${plural(usable, "review")} usable so far (${MIN_REVIEWS} needed, ${GOOD_REVIEWS}+ is better)`}>
+      <Row title={custom ? "Using your own weights" : "Using the standard weights"} sub={custom && s.fsrsFit ? (s.fsrsFit.fromAnki ? "Taken from your Anki deck options" : `Fitted ${dateText(s.fsrsFit.at)} from ${plural(s.fsrsFit.n, "review")}`) : `${plural(usable, "review")} usable so far (${MIN_REVIEWS} needed, ${GOOD_REVIEWS}+ is better)`}>
         {custom && <button className="btn btn-soft" onClick={reset}>Use defaults</button>}
       </Row>
       <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>

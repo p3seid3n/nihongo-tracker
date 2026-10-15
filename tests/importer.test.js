@@ -70,3 +70,35 @@ describe.skipIf(!have)("real export", () => {
     expect(s.rec(ids[315])).toBeNull();
   }, 120000);
 });
+
+import { parseDeckConfig } from "../src/lib/importer/apkg.js";
+import { imageOf, planMedia, isImageName } from "../src/lib/importer/media.js";
+
+describe("pictures and presets (4.9)", () => {
+  it("keeps the mnemonic picture and recording of a kana note", () => {
+    const h = mapNote("Basic (type in the answer)+", ["Kana", "Romaji", "Mnemonic Text", "Mnemonic Image", "Audio"],
+      ["あ", "a", "Find the capital <u>A</u> in あ.", '<img src="あ.png">', "[sound:あ-2d1d.mp3]"], "Tofugu Hiragana Anki Deck");
+    expect(h).toMatchObject({ kind: "kana", f: "あ", m: "a" });
+    expect(h.x).toMatchObject({ img: "あ.png", wa: "あ-2d1d.mp3", story: "Find the capital A in あ." });
+  });
+  it("finds pictures in any field, skips remote ones", () => {
+    expect(imageOf('<img alt="x | y" src="jiko.webp">')).toBe("jiko.webp");
+    expect(imageOf("<img src='a%20b.png'>")).toBe("a b.png");
+    expect(imageOf('<img src="https://x.org/a.png">')).toBe("");
+    expect(imageOf("no picture")).toBe("");
+    expect(isImageName("a.webp")).toBe(true);
+    expect(isImageName("a.mp3")).toBe(false);
+  });
+  it("plans pictures along with audio", () => {
+    const decks = [{ content: { a: { x: { wa: "a.mp3", img: "a.png" } }, b: { x: { img: "b.png" } } } }];
+    const p = planMedia(decks, [{ name: "a.mp3", size: 10 }, { name: "a.png", size: 5 }, { name: "z.png", size: 1 }, { name: "b.png", size: 2 }]);
+    expect(p).toMatchObject({ audio: 1, images: 2, bytes: 17 });
+  });
+  it("reads Anki's scheduling preset", () => {
+    // the Default preset from a real AnkiDroid export
+    const hex = "0a080000803f00002041120400002041221c0000803f0000803f0000803f0000803f0000803f0000803f0000803f481450c8015d00002040656666a63f6d9a99993f7d0000803f8001949d02880101900101980104a80101b00108c0013cad026666663fc5026666663fe00201";
+    const bytes = Uint8Array.from(hex.match(/../g).map((h) => parseInt(h, 16)));
+    expect(parseDeckConfig(bytes)).toEqual({ learnSteps: "1m 10m", relearnSteps: "10m", easyDays: [1, 1, 1, 1, 1, 1, 1], newPerDay: 20, reviewsPerDay: 200, maxInterval: 36500, retention: 0.9 });
+    expect(parseDeckConfig(new Uint8Array([0xff]))).toBeNull();
+  });
+});

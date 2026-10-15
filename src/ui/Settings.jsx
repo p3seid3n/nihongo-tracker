@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Switch, Seg, Stepper, Banner, useApp, PageHead, plural, scrollToTop } from "./common.jsx";
+import { parseSteps } from "../lib/store.js";
 import { signOut, cloudConfigured } from "../lib/auth.js";
 import { setHaptics, canHaptic, onIOS } from "../lib/haptics.js";
 import * as hap from "../lib/haptics.js";
@@ -12,7 +13,7 @@ import MemoryModel from "./MemoryModel.jsx";
 import { Library } from "./Library.jsx";
 import { PACE, EARLY_LESSONS, grammarInterval } from "../lib/plan.js";
 
-export const APP_VERSION = "4.8.1";
+export const APP_VERSION = "4.9.0";
 
 function Row({ title, sub, children }) {
   return (
@@ -273,9 +274,10 @@ export function Settings() {
           <Row title="Weak spots round" sub="At the end of a session, a few cards you missed twice in the last three days come back once more."><Switch checked={s.weakSpots !== false} onChange={(v) => set({ weakSpots: v })} label="Weak spots round" /></Row>
           <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
             <div><div>Target retention</div><div className="small dim">How often you want to remember a card when it comes back</div></div>
-            <Seg label="Target retention" value={s.retention} onChange={(v) => set({ retention: v })} options={[{ value: 0.85, label: "85%" }, { value: 0.9, label: "90%" }, { value: 0.95, label: "95%" }]} />
+            <Seg label="Target retention" value={s.retention} onChange={(v) => set({ retention: v })} options={[0.85, 0.9, 0.95, ...([0.85, 0.9, 0.95].includes(s.retention) ? [] : [s.retention])].sort().map((v) => ({ value: v, label: `${Math.round(v * 100)}%` }))} />
           </div>
         </Section>
+        <SchedulingSection s={s} set={set} />
       </Sub>
     );
   }
@@ -333,8 +335,9 @@ export function Settings() {
   if (page === "data") {
     return (
       <Sub title="Backup and import" onBack={back}>
-        <Section title="Anki" hint="Bring your kanji and vocabulary decks along, with your progress and audio.">
+        <Section title="Anki" hint="Bring your decks along with your progress, audio and pictures, or take them back to AnkiDroid.">
           <button className="list-item" onClick={() => open({ type: "import" })}><Icon name="cards" /><span className="grow">Import Anki deck</span></button>
+          <button className="list-item" onClick={() => open({ type: "ankiExport" })}><Icon name="download" /><span className="grow"><div>Export to Anki (.apkg)</div><div className="small dim">Continue in AnkiDroid with your progress</div></span></button>
         </Section>
         <Section title="Backup" hint="A backup file holds every deck, card and review. Restoring merges it with what is on this device.">
           <button className="list-item" onClick={exportBackup}><Icon name="download" /><span className="grow">Export backup</span></button>
@@ -392,3 +395,47 @@ export function Settings() {
     </div>
   );
 }
+
+const MAX_IVL = [{ value: 365, label: "1 y" }, { value: 730, label: "2 y" }, { value: 1825, label: "5 y" }, { value: 3650, label: "10 y" }, { value: 36500, label: "No limit" }];
+const EASY_LEVELS = [1, 0.5, 0];
+const EASY_NAMES = { 1: "Normal", 0.5: "Reduced", 0: "Minimum" };
+
+/** Anki's scheduling options: learning steps, maximum interval, load balancer, easy days, burying siblings. */
+function SchedulingSection({ s, set }) {
+  const [learn, setLearn] = React.useState(s.learnSteps ?? "1m 10m");
+  const [relearn, setRelearn] = React.useState(s.relearnSteps ?? "10m");
+  const okSteps = (t) => t.trim() === "" || parseSteps(t, null) !== null;
+  const easy = Array.isArray(s.easyDays) && s.easyDays.length === 7 ? s.easyDays : [1, 1, 1, 1, 1, 1, 1];
+  const maxOpts = MAX_IVL.some((o) => o.value === (s.maxInterval ?? 36500)) ? MAX_IVL : [...MAX_IVL, { value: s.maxInterval, label: `${s.maxInterval} d` }];
+  return (
+    <Section title="Scheduling" hint="The same options as Anki's deck options. Steps are written like Anki's: 1m 10m 1h 1d.">
+      <div className="list-item stack" style={{ alignItems: "stretch", gap: 8 }}>
+        <div className="field"><label htmlFor="ls">Learning steps</label>
+          <input id="ls" className={`input ${okSteps(learn) ? "" : "bad"}`} value={learn} onChange={(e) => setLearn(e.target.value)} onBlur={() => { if (okSteps(learn)) set({ learnSteps: learn.trim() }); }} inputMode="text" autoCapitalize="off" spellCheck={false} />
+        </div>
+        <div className="field"><label htmlFor="rs">Relearning steps</label>
+          <input id="rs" className={`input ${okSteps(relearn) ? "" : "bad"}`} value={relearn} onChange={(e) => setRelearn(e.target.value)} onBlur={() => { if (okSteps(relearn)) set({ relearnSteps: relearn.trim() }); }} inputMode="text" autoCapitalize="off" spellCheck={false} />
+        </div>
+        {(!okSteps(learn) || !okSteps(relearn)) && <div className="small" style={{ color: "var(--rose)" }}>Use numbers with m, h or d, separated by spaces.</div>}
+      </div>
+      <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+        <div><div>Maximum interval</div><div className="small dim">The longest a card may wait before it comes back</div></div>
+        <Seg label="Maximum interval" value={s.maxInterval ?? 36500} onChange={(v) => set({ maxInterval: v })} options={maxOpts} />
+      </div>
+      <Row title="Load balancer" sub="When a card's next date can vary by a few days, it goes to the day with fewer reviews, so busy and quiet days even out (as in Anki 24.11)."><Switch checked={s.loadBalance !== false} onChange={(v) => set({ loadBalance: v })} label="Load balancer" /></Row>
+      <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+        <div><div>Easy days</div><div className="small dim">Days with fewer reviews. Tap a day to cycle normal, reduced and minimum.</div></div>
+        <div className="easy-days" role="group" aria-label="Easy days">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => (
+            <button key={d} type="button" className={`easy-day lvl-${String(easy[i]).replace(".", "")}`} aria-label={`${d}: ${EASY_NAMES[easy[i]] || "Normal"}`}
+              onClick={() => { const next = [...easy]; next[i] = EASY_LEVELS[(EASY_LEVELS.indexOf(easy[i]) + 1) % EASY_LEVELS.length]; set({ easyDays: next }); }}>
+              <b>{d}</b><small>{EASY_NAMES[easy[i]] || "Normal"}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      <Row title="Bury siblings" sub="A word's recognition card and its recall card never come up on the same day."><Switch checked={s.burySiblings !== false} onChange={(v) => set({ burySiblings: v })} label="Bury siblings" /></Row>
+    </Section>
+  );
+}
+

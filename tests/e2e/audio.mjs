@@ -38,7 +38,7 @@ await shot(page, "a2-import-audio");
 await page.waitForSelector("text=/Imported/", { timeout: 240000 });
 log("import + audio took", ((Date.now() - t0) / 1000).toFixed(1), "s");
 const doneText = await page.locator(".fullscreen .lesson-body").innerText();
-ok(/audio recordings saved/.test(doneText), "import reports saved recordings: " + (doneText.match(/[\d,]+ audio recordings saved[^.]*/) || [""])[0]);
+ok(/(audio recordings|recordings and pictures) saved/.test(doneText), "import reports saved recordings: " + (doneText.match(/[\d,]+ (audio recordings|recordings and pictures) saved[^.]*/) || [""])[0]);
 await page.click("text=Back to library");
 
 // ---- settings shows the audio
@@ -66,8 +66,8 @@ ok(played >= 2, `sentence clip played on reveal (${played} blob plays)`);
 await shot(page, "a4-study-back");
 
 // ---- pronunciation sheet: right, wrong, silence, error
-const word = await page.locator(".flash .word-big").innerText();
-const reading = await page.locator(".answer .reading").innerText();
+const word = await page.$eval(".flash .word-big", (el) => el.dataset.word);
+const reading = (await page.locator(".answer .reading").count()) ? await page.locator(".answer .reading").innerText() : (await page.$$eval(".flash .word-big rt", (els) => els.map((e) => e.textContent).join("")));
 const sentence = (await page.locator(".answer .box .jp-line, .answer .box").first().innerText()).replace(/\s+/g, "");
 log("card:", word, reading);
 await page.click("button[aria-label='Check my pronunciation']");

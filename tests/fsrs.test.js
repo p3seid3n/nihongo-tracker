@@ -20,7 +20,7 @@ describe("fsrs math", () => {
     expect(d[0]).toBeGreaterThan(d[1]);
     expect(d[1]).toBeGreaterThan(d[2]);
     expect(d[2]).toBeGreaterThan(d[3]);
-    expect(d[2]).toBeCloseTo(4.88, 1);
+    expect(d[2]).toBeCloseTo(2.118, 2); // FSRS-6 default: w4 - e^(2·w5) + 1
   });
   it("recall stability grows, forgetting shrinks it", () => {
     const r = 0.9;
@@ -59,7 +59,7 @@ describe("state machine", () => {
   it("new + Easy graduates immediately with a multi-day interval", () => {
     const c = F.review(null, 4, NOW, cfg);
     expect(c.st).toBe(F.REVIEW);
-    expect(dayIndex(c.due) - dayIndex(NOW)).toBeGreaterThan(10);
+    expect(dayIndex(c.due) - dayIndex(NOW)).toBeGreaterThanOrEqual(7); // FSRS-6 default: about 8 days
   });
   it("review + Again lapses into relearning", () => {
     let c = F.review(null, 4, NOW, cfg);

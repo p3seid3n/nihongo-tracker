@@ -8,7 +8,7 @@ import { Unzip, UnzipInflate, UnzipPassThrough, unzipSync } from "fflate";
 import { decompress as zstdDecompress } from "fzstd";
 import { DAY, monthKey } from "../time.js";
 
-import { parseMediaList, soundOf } from "./media.js";
+import { parseMediaList, soundOf, imageOf } from "./media.js";
 import { parsePitch, packPitch } from "../pitch.js";
 
 const WANTED = ["collection.anki21b", "collection.anki21", "collection.anki2", "media"];
@@ -97,8 +97,15 @@ export function deckIdFor(name) {
   return `imp-${slug || "deck"}-${hash36(name)}`;
 }
 
-/** Map one note to our card shape. */
+/** Map one note to our card shape. Pictures (kana mnemonics, kanji diagrams) are kept as x.img. */
 export function mapNote(modelName, fieldNames, fields, deckName) {
+  const out = mapNoteText(modelName, fieldNames, fields, deckName);
+  const img = fields.map(imageOf).find(Boolean);
+  if (img) out.x = { ...out.x, img };
+  return out;
+}
+
+function mapNoteText(modelName, fieldNames, fields, deckName) {
   const by = {};
   fieldNames.forEach((n, i) => { by[n.toLowerCase()] = fields[i] ?? ""; });
   const get = (...names) => { for (const n of names) if (by[n] != null && by[n] !== "") return by[n]; return ""; };
@@ -125,6 +132,7 @@ export function mapNote(modelName, fieldNames, fields, deckName) {
       r: cleanText(get("word reading", "reading")),
       m: cleanText(get("word meaning", "meaning")),
       x: compact({
+        wf: cleanText(get("word furigana", "furigana")),
         sent: cleanText(get("sentence")),
         sentF: cleanText(get("sentence furigana")),
         sentE: cleanText(get("sentence meaning")),
@@ -143,7 +151,7 @@ export function mapNote(modelName, fieldNames, fields, deckName) {
     const first = back.split("\n")[0] || "";
     const romaji = first.normalize("NFKC").toLowerCase().replace(/[^a-z]/g, "") || first;
     const story = back.split("\n").slice(1).join("\n") || cleanText(get("mnemonic text"), { breaks: true });
-    return { kind: "kana", f, r: romaji, m: romaji, x: compact({ story }) };
+    return { kind: "kana", f, r: romaji, m: romaji, x: compact({ story, wa: soundOf(get("audio", "sound")) || soundOf(fields.join(" ")) }) };
   }
   const kindByDeck = /kanji|rtk|heisig|kodansha/.test(dn) ? "kanji" : "vocab";
   const front = cleanText(fields[0]);
@@ -189,6 +197,61 @@ export function convertSchedule(c, crtSec) {
 }
 
 // ---------------------------------------------------------------------------
+// Anki's scheduling preset (deck options). New collections store it as protobuf (DeckConfig.Config):
+//   1 learn steps (minutes), 2 relearn steps, 4 easy days (Mon..Sun), 5/6 FSRS-5/6 parameters,
+//   9 new per day, 10 reviews per day, 16 maximum interval, 37 desired retention.
+function pbVarint(b, i) {
+  let r = 0, mul = 1;
+  for (;;) {
+    if (i >= b.length) throw new Error("truncated");
+    const c = b[i++];
+    r += (c & 0x7f) * mul;
+    if (!(c & 0x80)) return [r, i];
+    mul *= 128;
+  }
+}
+const f32 = (b, i) => new DataView(b.buffer, b.byteOffset + i, 4).getFloat32(0, true);
+
+/** Decode the parts of a DeckConfig.Config blob the app can use. Returns null if it isn't one. */
+export function parseDeckConfig(bytes) {
+  if (!bytes || !bytes.length) return null;
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const floats = {}, ints = {};
+  try {
+    let i = 0;
+    while (i < b.length) {
+      let tag; [tag, i] = pbVarint(b, i);
+      const field = Math.floor(tag / 8), wire = tag % 8;
+      if (wire === 0) { let v; [v, i] = pbVarint(b, i); ints[field] = v; }
+      else if (wire === 5) { floats[field] = [f32(b, i)]; i += 4; }
+      else if (wire === 1) i += 8;
+      else if (wire === 2) {
+        let n; [n, i] = pbVarint(b, i);
+        if (n % 4 === 0) { const a = []; for (let k = 0; k < n; k += 4) a.push(f32(b, i + k)); floats[field] = a; }
+        i += n;
+      } else return null;
+    }
+  } catch { return null; }
+  const round = (x, d = 4) => Math.round(x * 10 ** d) / 10 ** d;
+  const out = {};
+  if (floats[1]) out.learnSteps = floats[1].map((m) => fmtStep(m)).join(" ");
+  if (floats[2]) out.relearnSteps = floats[2].map((m) => fmtStep(m)).join(" ");
+  if (floats[4] && floats[4].length === 7) out.easyDays = floats[4].map((x) => round(x, 2));
+  const w6 = floats[6] && floats[6].length === 21 ? floats[6] : null;
+  if (w6) out.w = w6.map((x) => round(x));
+  if (ints[9] != null) out.newPerDay = ints[9];
+  if (ints[10] != null) out.reviewsPerDay = ints[10];
+  if (ints[16]) out.maxInterval = ints[16];
+  if (floats[37] && floats[37][0] > 0.5 && floats[37][0] < 1) out.retention = round(floats[37][0], 3);
+  return Object.keys(out).length ? out : null;
+}
+function fmtStep(min) {
+  if (min >= 1440 && min % 1440 === 0) return `${min / 1440}d`;
+  if (min >= 60 && min % 60 === 0) return `${min / 60}h`;
+  if (min < 1) return `${Math.round(min * 60)}s`;
+  return `${Math.round(min * 100) / 100}m`;
+}
+
 /**
  * Read an opened SQLite database (sql.js) and produce importable decks.
  * Returns { decks: [{id,name,kind,content,prog,count,newCount,reviewedCount}], revlog, warnings }
@@ -309,7 +372,29 @@ export function parseCollection(SQL, bytes, { maxRevlog = 200000 } = {}) {
       }
     }
 
-    return { decks, revlog, warnings };
+    // the scheduling preset most of these cards use (the first one with settings, usually "Default")
+    let preset = null;
+    try {
+      if (hasTable("deck_config")) {
+        for (const [, cfg] of exec("select id, config from deck_config order by id")) { preset = parseDeckConfig(cfg); if (preset) break; }
+      } else {
+        const j = JSON.parse(exec("select dconf from col")[0]?.[0] || "{}");
+        const c = j["1"] || Object.values(j)[0];
+        if (c) {
+          preset = {
+            learnSteps: (c.new?.delays || []).map(fmtStep).join(" "),
+            relearnSteps: (c.lapse?.delays || []).map(fmtStep).join(" "),
+            maxInterval: c.rev?.maxIvl || 36500,
+            newPerDay: c.new?.perDay, reviewsPerDay: c.rev?.perDay,
+          };
+          if (c.desiredRetention > 0.5 && c.desiredRetention < 1) preset.retention = c.desiredRetention;
+          const w = c.fsrsParams6 || c.fsrsWeights;
+          if (Array.isArray(w) && w.length === 21) preset.w = w;
+        }
+      }
+    } catch { preset = null; }
+
+    return { decks, revlog, warnings, preset };
   } finally {
     db.close();
   }

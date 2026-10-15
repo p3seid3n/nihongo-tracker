@@ -92,12 +92,13 @@ const POS_POOL = {
   adj: () => ADJECTIVES,
 };
 
+/** Wrong answers for a conjugation: the same form as the wrong kind of word, and nearby forms. [{ m, form, cls }] */
 function wrongConj(word, form, rng) {
   const out = [];
   const flip = { ru: "u", u: "ru", iku: "ru", iadj: "nadj", nadj: "iadj" }[word.cls];
   if (flip) {
     const m = conjMarkup({ ...word, cls: flip }, form);
-    if (m) out.push(m);
+    if (m) out.push({ m, form, cls: flip });
   }
   const related = {
     neg: ["past-neg", "polite-neg", "past"], "past-neg": ["neg", "past", "polite-past-neg"], past: ["te", "neg", "polite-past"],
@@ -108,7 +109,7 @@ function wrongConj(word, form, rng) {
   }[form] || ["neg", "past", "te"];
   for (const f of related) {
     const m = conjMarkup(word, f);
-    if (m) out.push(m);
+    if (m) out.push({ m, form: f, cls: word.cls });
   }
   return shuffle(rng, out);
 }
@@ -121,14 +122,15 @@ function conjExercise(lessonId, spec, ctx) {
   const word = pick(rng, pool, (w) => weight(w.id));
   if (!word) return null;
   const correct = conjMarkup(word, spec.form);
-  const wrongsM = wrongConj(word, spec.form, rng).filter((m) => m !== correct);
-  const wrongs = uniq(wrongsM).slice(0, 3);
+  const seen = new Set([correct]);
+  const wrongs = wrongConj(word, spec.form, rng).filter((w) => !seen.has(w.m) && seen.add(w.m)).slice(0, 3);
   if (wrongs.length < 2) return null;
-  const options = shuffle(rng, [{ id: nid(), text: correct, correct: true }, ...wrongs.map((m) => ({ id: nid(), text: m, correct: false }))]);
+  const options = shuffle(rng, [{ id: nid(), text: correct, correct: true, meta: { form: spec.form, cls: word.cls } }, ...wrongs.map((w) => ({ id: nid(), text: w.m, correct: false, meta: { form: w.form, cls: w.cls } }))]);
   return {
     id: nid(), kind: "choose", lessonId, instruction: `Make the ${FORMS[spec.form] || spec.form}`,
     prompt: { word: markup(word), wordEn: word.en && typeof word.en === "object" ? word.en.base : word.en },
-    options: options.map((o) => ({ ...o, jp: o.text })), explain: `${surface(word)} → ${options.find((o) => o.correct).text.replace(/\[[^\]]*\]/g, "")}`,
+    options: options.map((o) => ({ ...o, jp: o.text })), explain: "",
+    meta: { form: spec.form, cls: word.cls, word: surface(word) },
     words: [word.id],
   };
 }

@@ -102,7 +102,7 @@ for (let i = 0; i < 45 && sawRecall < 4; i++) {
     leechDone = true;
     const cur = await page.evaluate(() => {
       const s = window.__ntStore;
-      const t = document.querySelector(".word-big")?.textContent;
+      const t = document.querySelector(".word-big")?.dataset.word;
       for (const d of s.deckList()) for (const [id, c] of Object.entries(s.content[d.id] || {})) if (c.f === t && s.prog[d.id]?.[id]?.st === 2) { s.prog[d.id][id].lapses = 7; return id; }
       return null;
     });

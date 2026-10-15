@@ -61,8 +61,21 @@ export function parseMediaList(bytes) {
   return out;
 }
 
-const MIME = { mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", mp4: "audio/mp4", ogg: "audio/ogg", oga: "audio/ogg", opus: "audio/ogg", wav: "audio/wav", flac: "audio/flac", webm: "audio/webm" };
+const MIME = {
+  mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", mp4: "audio/mp4", ogg: "audio/ogg", oga: "audio/ogg", opus: "audio/ogg", wav: "audio/wav", flac: "audio/flac", webm: "audio/webm",
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", avif: "image/avif",
+};
 export const mimeOf = (name) => MIME[String(name).split(".").pop().toLowerCase()] || "audio/mpeg";
+export const isImageName = (name) => /^image\//.test(MIME[String(name).split(".").pop().toLowerCase()] || "");
+
+/** <img src="file.png"> -> "file.png" (the first picture in a field, "" if none). Remote pictures are left out. */
+export function imageOf(raw) {
+  const m = /<img[^>]*\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/i.exec(String(raw ?? ""));
+  if (!m) return "";
+  const src = (m[1] || m[2] || m[3] || "").trim();
+  if (!src || /^(https?:|data:|\/\/)/i.test(src)) return "";
+  try { return decodeURIComponent(src); } catch { return src; }
+}
 
 /** [sound:file.mp3] -> "file.mp3" ("" if none). */
 export function soundOf(raw) {
@@ -80,18 +93,23 @@ function concat(chunks) {
 }
 
 /**
- * Plan an audio import: which clips do these cards reference, and where are they in the package?
- * decks: [{ content: { id: { x: { wa, sa } } } }], list: parseMediaList result.
- * Returns { files: [{ index, name, size }], bytes }.
+ * Plan a media import: which recordings and pictures do these cards reference, and where are they in the package?
+ * decks: [{ content: { id: { x: { wa, sa, img } } } }], list: parseMediaList result.
+ * Returns { files: [{ index, name, size }], bytes, audio, images }.
  */
-export function planAudio(decks, list) {
+export function planMedia(decks, list) {
   const wanted = new Set();
-  for (const d of decks) for (const c of Object.values(d.content)) { if (c.x?.wa) wanted.add(c.x.wa); if (c.x?.sa) wanted.add(c.x.sa); }
+  for (const d of decks) for (const c of Object.values(d.content)) { if (c.x?.wa) wanted.add(c.x.wa); if (c.x?.sa) wanted.add(c.x.sa); if (c.x?.img) wanted.add(c.x.img); }
   const files = [];
-  let bytes = 0;
-  list.forEach((e, index) => { if (e && wanted.has(e.name)) { files.push({ index, name: e.name, size: e.size || 0 }); bytes += e.size || 0; } });
-  return { files, bytes };
+  let bytes = 0, audio = 0, images = 0;
+  list.forEach((e, index) => {
+    if (!e || !wanted.has(e.name)) return;
+    files.push({ index, name: e.name, size: e.size || 0 }); bytes += e.size || 0;
+    if (isImageName(e.name)) images++; else audio++;
+  });
+  return { files, bytes, audio, images };
 }
+export const planAudio = planMedia;
 
 /**
  * Second pass over the package: decode the wanted clips and hand them to `put(name, bytes, mime)`.

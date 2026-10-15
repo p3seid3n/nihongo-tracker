@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
 import { Rich, ExerciseRunner } from "./Exercises.jsx";
@@ -13,6 +13,7 @@ import { makeWeight } from "../lib/personal.js";
 import { currentRetrievability } from "../lib/fsrs.js";
 import { dayStart, fmtSpan } from "../lib/time.js";
 import * as hap from "../lib/haptics.js";
+import { loadResume, saveResume, clearResume } from "../lib/resume.js";
 
 let allEnglish = null;
 function makeCtx(store) {
@@ -111,14 +112,21 @@ function UnitSheet({ unit, onClose }) {
 // ---------------------------------------------------------------------------
 // Lesson player
 export function LessonPlayer({ id, onClose, onOpen }) {
-  const { store } = useApp();
+  const { store, toast } = useApp();
   const lesson = LESSON_BY_ID[id];
-  const [stage, setStage] = useState("learn");
-  const [page, setPage] = useState(0);
+  const key = `lesson:${id}`;
+  // carry on where you left this lesson: the page you were reading, or the exercise you were on
+  const [saved] = useState(() => loadResume(key));
+  const [stage, setStage] = useState(() => (saved && saved.stage === "practice" && saved.exs ? "practice" : "learn"));
+  const [page, setPage] = useState(() => (saved && saved.stage === "learn" ? saved.page || 0 : 0));
   const [dir, setDir] = useState("fwd");
-  const [exs, setExs] = useState(null);
+  const [exs, setExs] = useState(() => (saved && saved.stage === "practice" ? saved.exs : null));
+  const [runState, setRunState] = useState(() => (saved && saved.stage === "practice" ? saved.run || null : null));
+  const [runKey, setRunKey] = useState(0);
   const [err, setErr] = useState("");
   const [result, setResult] = useState(null);
+  useEffect(() => { if (saved && (saved.stage === "practice" || saved.page > 0)) toast("Picked up where you left off"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (stage === "learn") saveResume(key, { stage: "learn", page }); }, [stage, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!lesson) return <Shell onClose={onClose}><div className="lesson-body"><p>This lesson doesn't exist any more.</p><button className="btn btn-primary" onClick={onClose}>Back</button></div></Shell>;
 
@@ -126,7 +134,8 @@ export function LessonPlayer({ id, onClose, onOpen }) {
     try {
       const list = buildLessonExercises(lesson, makeCtx(store));
       if (!list.length) throw new Error("no exercises");
-      setExs(list); setStage("practice"); setErr("");
+      setExs(list); setRunState(null); setRunKey((k) => k + 1); setStage("practice"); setErr("");
+      saveResume(key, { stage: "practice", exs: list, run: null });
     } catch (e) {
       console.error(e);
       setErr("Couldn't build practice for this lesson. Try again.");
@@ -138,13 +147,20 @@ export function LessonPlayer({ id, onClose, onOpen }) {
     const first = !store.lessons[id]?.done;
     const rec = store.recordLesson(id, acc, { first });
     store.logLesson(id, acc, r.ms);
+    clearResume(key);
     setResult({ acc, rec, passed: acc >= 0.6, r });
     setStage("result");
     hap.lesson();
   };
 
   if (stage === "practice") {
-    return <Shell><ExerciseRunner exercises={exs} onFinish={finish} onClose={onClose} title={lesson.title} /></Shell>;
+    return (
+      <Shell>
+        <ExerciseRunner key={runKey} exercises={exs} resume={runState} onFinish={finish} onClose={onClose} title={lesson.title}
+          onProgress={(run) => saveResume(key, { stage: "practice", exs, run })}
+          onRestart={startPractice} />
+      </Shell>
+    );
   }
 
   if (stage === "result") {
@@ -247,8 +263,13 @@ function Shell({ children }) {
 // ---------------------------------------------------------------------------
 // Mixed practice: grammar review, test-out and sentence reading
 export function PracticePlayer({ mode, unitId, onClose }) {
-  const { store } = useApp();
-  const [state] = useState(() => {
+  const { store, toast } = useApp();
+  const key = `practice:${mode}${unitId ? ":" + unitId : ""}`;
+  const [saved] = useState(() => loadResume(key));
+  useEffect(() => { if (saved) toast("Picked up where you left off"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [restarts, setRestarts] = useState(0);
+  const [state, setState] = useState(() => (saved && saved.list && saved.list.length ? { list: saved.list, lessons: saved.lessons ? saved.lessons.map((lid) => LESSON_BY_ID[lid]).filter(Boolean) : undefined, run: saved.run } : build()));
+  function build() {
     const ctx = makeCtx(store);
     try {
       if (mode === "sentences") return { list: buildSentenceSession(store, ctx.rng, { n: 10 }).list };
@@ -261,7 +282,8 @@ export function PracticePlayer({ mode, unitId, onClose }) {
       const src = shuffle(ctx.rng, dueLs.length ? dueLs : doneLs).slice(0, 6);
       return { list: buildReviewExercises(src, ctx, 8) };
     } catch (e) { console.error(e); return { list: [] }; }
-  });
+  }
+  const restart = () => { clearResume(key); setState(build()); setRestarts((n) => n + 1); };
   const [result, setResult] = useState(null);
 
   const finish = (r) => {
@@ -279,6 +301,7 @@ export function PracticePlayer({ mode, unitId, onClose }) {
       } else note = "You need 80% to skip this unit. The lessons are waiting for you.";
     }
     store.logLesson(mode === "sentences" ? "sentences" : mode, acc, r.ms);
+    clearResume(key);
     setResult({ acc, passed, note, r });
     hap.done();
   };
@@ -312,5 +335,11 @@ export function PracticePlayer({ mode, unitId, onClose }) {
       </Shell>
     );
   }
-  return <Shell><ExerciseRunner exercises={state.list} onFinish={finish} onClose={onClose} title={mode === "sentences" ? "Sentences" : mode === "testout" ? "Test out" : "Review"} /></Shell>;
+  return (
+    <Shell>
+      <ExerciseRunner key={restarts} exercises={state.list} resume={restarts ? null : state.run} onFinish={finish} onClose={onClose} title={mode === "sentences" ? "Sentences" : mode === "testout" ? "Test out" : "Review"}
+        onProgress={(run) => saveResume(key, { list: state.list, lessons: state.lessons ? state.lessons.map((l) => l.id) : undefined, run })}
+        onRestart={restart} />
+    </Shell>
+  );
 }

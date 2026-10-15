@@ -1,7 +1,7 @@
 // Mixed practice built from the example sentences on your own vocabulary cards.
 // Only sentences made of words and grammar the lexicon can explain are used; anything you have not
 // learned yet carries a short translation above it.
-import { conjugate, segsToMarkup, KANJI_RE, FORMS } from "./jp.js";
+import { conjugate, segsToMarkup, KANJI_RE } from "./jp.js";
 import { currentRetrievability, REVIEW, NEW } from "./fsrs.js";
 import { shuffle } from "../content/generators.js";
 import { sentencePart } from "./audio.js";
@@ -10,7 +10,6 @@ import { buildLexicon, analyzeSentence, fit, tokenInfo, shortGloss, wordShape } 
 let counter = 0;
 const nid = () => `s${++counter}`;
 const uniq = (a) => [...new Set(a)];
-const plainText = (m) => String(m).replace(/\[[^\]]*\]/g, "");
 
 const MAX_GLOSSED = 4;
 const MIN_TOKENS = 2;
@@ -73,7 +72,7 @@ function chooseMeaning(S, allEn, rng) {
   const options = shuffle(rng, [{ id: nid(), text: S.en, correct: true }, ...wrongs.map((w) => ({ id: nid(), text: w, correct: false }))]);
   return {
     id: nid(), kind: "choose", lessonId: "sentences", instruction: "What does this sentence mean?",
-    prompt: { toks: S.toks }, options, explain: S.card.f ? `Word in focus: ${S.card.f}${S.card.m ? ` (${shortGloss(S.card.m)})` : ""}` : "",
+    prompt: { toks: S.toks }, options, explain: "",
   };
 }
 
@@ -150,10 +149,10 @@ function gapWord(S, lex, rng) {
     if (wrongs.length === 3) break;
   }
   if (wrongs.length < 3) return null;
-  const options = shuffle(rng, [{ id: nid(), text: t.m, correct: true, jp: true }, ...wrongs.map((e) => ({ id: nid(), text: entryMarkup(e), correct: false, jp: true }))]);
+  const options = shuffle(rng, [{ id: nid(), text: t.m, correct: true, jp: true, meta: { gloss: shortGloss(t.entry.m) } }, ...wrongs.map((e) => ({ id: nid(), text: entryMarkup(e), correct: false, jp: true, meta: { gloss: shortGloss(e.m) } }))]);
   return {
     id: nid(), kind: "choose", lessonId: "sentences", instruction: "Fill in the gap",
-    prompt: { toks: S.toks, blank: i, en: S.en }, options, explain: `${S.markup} · ${S.en}`,
+    prompt: { toks: S.toks, blank: i, en: S.en }, options, explain: "",
   };
 }
 
@@ -184,7 +183,7 @@ function formAlternatives(tok) {
       if (!text || text === tok.text || out.some((o) => o.text === text)) continue;
       out.push({ form: f, text, m: segsToMarkup(segs) });
     }
-    if (out.length >= 2) return { observed, alts: out.slice(0, 3) };
+    if (out.length >= 2) return { observed, alts: out.slice(0, 3), cls: shape.cls };
   }
   return null;
 }
@@ -217,11 +216,11 @@ function gapForm(S, rng) {
   const c = formTokens(S);
   if (!c.length) return null;
   const { t, i, alt } = shuffle(rng, c)[0];
-  const options = shuffle(rng, [{ id: nid(), text: t.m, correct: true, jp: true }, ...alt.alts.map((a) => ({ id: nid(), text: a.m, correct: false, jp: true }))]);
+  const options = shuffle(rng, [{ id: nid(), text: t.m, correct: true, jp: true, meta: { form: alt.observed, cls: alt.cls } }, ...alt.alts.map((a) => ({ id: nid(), text: a.m, correct: false, jp: true, meta: { form: a.form, cls: alt.cls } }))]);
   return {
     id: nid(), kind: "choose", lessonId: "sentences", instruction: "Choose the right form",
     prompt: { toks: S.toks, blank: i, en: S.en }, options,
-    explain: `${plainText(t.m)} is the ${FORMS[alt.observed] || alt.observed}. ${S.markup} · ${S.en}`,
+    explain: "", meta: { form: alt.observed, cls: alt.cls, word: t.entry.f, en: S.en },
   };
 }
 
@@ -230,11 +229,11 @@ function versionChoice(S, rng) {
   if (!c.length) return null;
   const { t, i, alt } = shuffle(rng, c)[0];
   const swap = (m) => S.tokens.map((x, k) => (k === i ? m : x.m)).join("");
-  const options = shuffle(rng, [{ id: nid(), text: S.markup, correct: true, jp: true }, ...alt.alts.slice(0, 2).map((a) => ({ id: nid(), text: swap(a.m), correct: false, jp: true }))]);
+  const options = shuffle(rng, [{ id: nid(), text: S.markup, correct: true, jp: true, meta: { form: alt.observed, cls: alt.cls } }, ...alt.alts.slice(0, 2).map((a) => ({ id: nid(), text: swap(a.m), correct: false, jp: true, meta: { form: a.form, cls: alt.cls } }))]);
   if (new Set(options.map((o) => o.text.replace(/\[[^\]]*\]/g, ""))).size !== options.length) return null;
   return {
     id: nid(), kind: "choose", lessonId: "sentences", instruction: "Which sentence matches the translation?",
-    prompt: { text: S.en, noFuri: true }, options, explain: `${plainText(t.m)} is the ${FORMS[alt.observed] || alt.observed}.`,
+    prompt: { text: S.en, noFuri: true }, options, explain: "", meta: { form: alt.observed, cls: alt.cls, word: t.entry.f, en: S.en },
   };
 }
 

@@ -50,7 +50,7 @@ for (let i = 0; i < 80; i++) {
   if (await page.locator("text=Lesson complete, text=Almost there").count()) break;
   if (await page.locator("h1:has-text('Lesson complete'), h1:has-text('Almost there')").count()) break;
   if (steps === 2) await shot(page, "16-exercise");
-  const cont = page.locator(".feedback button");
+  const cont = page.locator(".result-sheet .rs-continue");
   if (await cont.count()) { await cont.click(); steps++; continue; }
   if (await page.locator(".match").count()) {
     const lefts = await page.locator(".match > div:first-child button").count();

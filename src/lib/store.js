@@ -3,13 +3,32 @@
 // is persisted under its own key and synced to the cloud under the same key.
 import { createStore as idbCreateStore, keys as idbKeys, getMany, setMany, delMany } from "idb-keyval";
 import { DEFAULT_CFG, DEFAULT_W, review as fsrsReview, NEW, REVIEW, validWeights, setActiveWeights } from "./fsrs.js";
-import { addDays, dayKey, monthKey, DAY } from "./time.js";
+import { addDays, dayKey, monthKey, dayIndex, DAY, MIN } from "./time.js";
 import { mergeSlice, sliceKind } from "./merge.js";
 import { uuid, deckOf, baseId, isProd } from "./ids.js";
 import { KANA_DECKS, kanaContent } from "./kana.js";
 
 export const SCHEMA_VERSION = 4;
 const PREFIX = "nt4:";
+
+/** "1m 10m 1h 1d" -> milliseconds, like Anki's step fields. Anything unreadable gives `fallback`. */
+export function parseSteps(text, fallback = []) {
+  if (Array.isArray(text)) return text;
+  if (typeof text !== "string") return fallback;
+  const t = text.trim();
+  if (!t) return [];
+  const out = [];
+  for (const part of t.split(/[\s,]+/)) {
+    const m = /^(\d+(?:\.\d+)?)\s*([smhd]?)$/i.exec(part);
+    if (!m) return fallback;
+    const n = parseFloat(m[1]);
+    const unit = (m[2] || "m").toLowerCase();
+    const ms = n * (unit === "s" ? 1000 : unit === "h" ? 60 * MIN : unit === "d" ? DAY : MIN);
+    if (!(ms > 0) || ms > 30 * DAY) return fallback;
+    out.push(Math.round(ms));
+  }
+  return out.slice(0, 12);
+}
 
 export const DEFAULT_SETTINGS = {
   name: "",
@@ -41,6 +60,12 @@ export const DEFAULT_SETTINGS = {
   grammarEvery: 7, // days between new grammar lessons (the daily plan)
   grammarEarlyFast: true, // the first, easy lessons open about three times faster
   fsrsW: null, // personal FSRS weights fitted to your own reviews (null = the defaults)
+  maxInterval: 36500, // days; Anki's default is 100 years
+  learnSteps: "1m 10m", // like Anki: minutes (m), hours (h) or days (d)
+  relearnSteps: "10m",
+  loadBalance: true, // put due dates within the fuzz range on lighter days (Anki 24.11+)
+  easyDays: [1, 1, 1, 1, 1, 1, 1], // Monday..Sunday: 1 normal, 0.5 reduced, 0 minimum
+  burySiblings: true, // a word's recognition and recall cards never both come up on the same day
   fsrsFit: null, // what the last fit found: { at, n, before, after, better }
   u: 0,
 };
@@ -146,6 +171,7 @@ export class Store {
 
   /** Mark a slice as changed locally: persist it and queue it for sync. */
   touch(key) {
+    if (!this._keepDue && key.startsWith("prog:")) this._dueMap = null; // due counts are rebuilt on demand
     this.meta.dirty[key] = true;
     this.seq[key] = (this.seq[key] || 0) + 1;
     this._persist(key);
@@ -193,6 +219,7 @@ export class Store {
 
   /** Merge data that arrived from the cloud or a backup. Returns the merged slice. */
   applyRemote(key, remote) {
+    this._dueMap = null;
     const local = this.getSlice(key);
     let merged = mergeSlice(key, local, remote);
     this._setSlice(key, merged);
@@ -215,7 +242,37 @@ export class Store {
   // ---- helpers
   /** The weights in use: your fitted ones when valid, otherwise the defaults. */
   weights() { return validWeights(this.settings.fsrsW) ? this.settings.fsrsW : DEFAULT_W; }
-  fsrsCfg() { return { ...DEFAULT_CFG, w: this.weights(), retention: this.settings.retention || 0.9 }; }
+  fsrsCfg() {
+    const s = this.settings;
+    return {
+      ...DEFAULT_CFG,
+      w: this.weights(),
+      retention: s.retention || 0.9,
+      maxInterval: Math.max(1, Math.round(s.maxInterval || 36500)),
+      learningSteps: parseSteps(s.learnSteps, DEFAULT_CFG.learningSteps),
+      relearningSteps: parseSteps(s.relearnSteps, DEFAULT_CFG.relearningSteps),
+      load: s.loadBalance === false ? (Array.isArray(s.easyDays) ? { dueOn: () => 0, easyDays: s.easyDays } : null) : { dueOn: (day) => this.dueOn(day), easyDays: Array.isArray(s.easyDays) ? s.easyDays : null },
+    };
+  }
+
+  /** How many review cards are due on a study day (for the load balancer). Built once, then kept up to date. */
+  dueOn(day) {
+    if (!this._dueMap) {
+      const m = new Map();
+      for (const prog of Object.values(this.prog)) for (const r of Object.values(prog)) {
+        if (!r || r.st !== REVIEW || r.sus) continue;
+        const d = dayIndex(r.due);
+        m.set(d, (m.get(d) || 0) + 1);
+      }
+      this._dueMap = m;
+    }
+    return this._dueMap.get(day) || 0;
+  }
+  _dueMove(prev, next) {
+    if (!this._dueMap) return;
+    const bump = (r, n) => { if (r && r.st === REVIEW && !r.sus) { const d = dayIndex(r.due); this._dueMap.set(d, Math.max(0, (this._dueMap.get(d) || 0) + n)); } };
+    bump(prev, -1); bump(next, 1);
+  }
   /** Recall cards skip the learning steps: you already know the word, this only tests production. */
   prodCfg() { return { ...this.fsrsCfg(), learningSteps: [] }; }
   cfgFor(cardId) { return isProd(cardId) ? this.prodCfg() : this.fsrsCfg(); }
@@ -351,11 +408,14 @@ export class Store {
     const prev = prog[cardId] || null;
     const next = fsrsReview(prev, grade, now, this.cfgFor(cardId), cardId);
     if (prev?.sus) next.sus = prev.sus;
+    this._dueMove(prev, next);
     prog[cardId] = next;
     const month = monthKey(now);
     const row = [now, cardId, grade, Math.min(Math.max(0, Math.round(ms)), 120000), prev ? prev.st : NEW, next.ivl || 0];
     (this.log[month] = this.log[month] || []).push(row);
+    this._keepDue = true;
     this.touch(`prog:${deckId}`);
+    this._keepDue = false;
     this.touch(`log:${month}`);
     this.emit();
     return { cardId, prev, next, row, month, deckId };
@@ -364,13 +424,16 @@ export class Store {
   undoReview(entry, now = Date.now()) {
     const { cardId, prev, row, month, deckId } = entry;
     const prog = (this.prog[deckId] = this.prog[deckId] || {});
+    this._dueMove(prog[cardId], prev);
     prog[cardId] = prev
       ? { ...prev, u: now }
       : { st: NEW, s: 0, d: 0, due: 0, last: 0, reps: 0, lapses: 0, step: 0, u: now };
     const rows = this.log[month] || [];
     const i = rows.findIndex((r) => r[0] === row[0] && r[1] === row[1]);
     if (i >= 0) rows[i] = [row[0], row[1], 0, 0, row[4], 0];
+    this._keepDue = true;
     this.touch(`prog:${deckId}`);
+    this._keepDue = false;
     this.touch(`log:${month}`);
     this.emit();
   }

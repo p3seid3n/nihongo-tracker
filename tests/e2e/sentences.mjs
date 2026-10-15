@@ -24,7 +24,7 @@ const kinds = new Set();
 let popups = 0, glossSeen = 0, steps = 0;
 for (let i = 0; i < 60; i++) {
   if (await page.locator("h1:has-text('Practice complete')").count()) break;
-  const cont = page.locator(".feedback button");
+  const cont = page.locator(".result-sheet .rs-continue");
   if (await cont.count()) { await cont.click(); continue; }
   steps++;
   const instr = (await page.locator(".q-instr").first().innerText().catch(() => "")) || "match";
