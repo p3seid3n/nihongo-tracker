@@ -2,6 +2,7 @@ import React, { useMemo, useRef } from "react";
 import { Icon } from "./icons.jsx";
 import { Ring, Step, useApp, useNow, plural, fmtNum } from "./common.jsx";
 import { InkWord, Hanko } from "./Ink.jsx";
+import { DojoBar, DojoGreeting, Quests, useDojo } from "./Dojo.jsx";
 import { usePlanInputs } from "./planInputs.js";
 import { buildPlan } from "../lib/plan.js";
 import { dayIndexToDate } from "../lib/time.js";
@@ -50,6 +51,7 @@ export function Home() {
     : dayIndexToDate(gate.openDay).toLocaleDateString(undefined, { weekday: "long" });
 
   const effort = counts.effort;
+  const dojo = useDojo(now);
 
   return (
     <div className="page">
@@ -64,6 +66,9 @@ export function Home() {
         </div>
       </header>
 
+      <DojoBar dojo={dojo} onOpen={() => go("stats")} />
+      <DojoGreeting dojo={dojo} planDone={plan.allDone} planStarted={finished > 0} />
+
       <section className="plan-hero ink-card" aria-label="Today">
         <Ring size={96} stroke={9} value={plan.allDone ? 1 : progress}>
           {plan.allDone ? <Icon name="check" size={34} /> : <div><b style={{ fontSize: "1.6rem" }}>{finished}/{total}</b><div className="tiny dim">done</div></div>}
@@ -74,7 +79,6 @@ export function Home() {
             {plan.allDone
               ? <span className="chip">{counts.today.total ? `${counts.today.total} cards reviewed` : "Nothing left"}</span>
               : <span className="chip"><Icon name="clock" /> about {plan.minutes.planned} min</span>}
-            {stats.streak.current > 0 && <span className="chip chip-primary"><Icon name="flame" /> {stats.streak.current} day{stats.streak.current === 1 ? "" : "s"}</span>}
           </div>
         </div>
       </section>
@@ -87,6 +91,8 @@ export function Home() {
           <Step key={it.id} icon={it.icon} done={it.done} title={it.title} sub={it.sub} badge={!it.done && it.min ? `${it.min} min` : null} onClick={() => open(it.open)} />
         ))}
       </section>
+
+      <Quests dojo={dojo} />
 
       {(effort.spent > 0 || counts.total > 0) && (
         <section className="effort" aria-label="Card effort today">

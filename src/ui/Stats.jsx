@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Icon } from "./icons.jsx";
 import { useApp, useNow, PageHead, fmtNum, fmtMinutes, plural } from "./common.jsx";
 import { computeStats } from "../lib/stats.js";
+import { DojoPanel } from "./Dojo.jsx";
 import { newLimit } from "../lib/queue.js";
 import { dayKey, dayIndexToDate } from "../lib/time.js";
 
@@ -73,6 +74,8 @@ export function Stats() {
   return (
     <div className="page">
       <PageHead title="Stats" />
+
+      <DojoPanel />
 
       <div className="tiles">
         <div className="tile"><span className="v"><Icon name="flame" size={22} style={{ verticalAlign: -3, color: "var(--primary)" }} /> {st.streak.current}</span><span className="l">day streak</span><span className="d">Best: {st.streak.longest}</span></div>

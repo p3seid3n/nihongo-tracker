@@ -173,9 +173,11 @@ ok(!!kai && kai.count === 3, `the .apkg opens and holds the vocabulary deck (${k
 ok(Object.keys(kai.prog).length >= 1, `and its progress (${Object.keys(kai.prog).length} cards started)`);
 ok(parsed.revlog.length >= 3, `and the review history (${parsed.revlog.length} reviews)`);
 
-// ---- glass dock
+// ---- glass dock (since 5.0 only in the glass design; Material You is the default)
+await page.evaluate(() => window.__ntStore.updateSettings({ surface: "glass" }));
+await page.waitForTimeout(300);
 const glass = await page.$eval(".nav-inner", (el) => getComputedStyle(el).backdropFilter || getComputedStyle(el).webkitBackdropFilter);
-ok(/blur/.test(glass), "the dock is frosted glass: " + glass);
+ok(/blur|url/.test(glass), "the dock is glass: " + glass);
 
 console.log("errors:", errors);
 ok(errors.filter((e) => !/Failed to load resource/.test(e)).length === 0, "no console errors");

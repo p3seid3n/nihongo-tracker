@@ -17,6 +17,8 @@ export async function launch(opts = {}) {
     serviceWorkers: opts.serviceWorkers || "block",
     ...opts.context,
   });
+  // rank-up ceremonies would cover the screen in tests written before 5.0 (v50.mjs turns them back on)
+  if (!opts.ceremonies) await ctx.addInitScript(() => { try { localStorage.setItem("nt-quiet-dojo", "1"); } catch { /* ignore */ } });
   const page = await ctx.newPage();
   const errors = [];
   page.on("console", (m) => { if (m.type() === "error") errors.push("console: " + m.text()); });

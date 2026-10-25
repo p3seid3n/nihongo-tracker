@@ -67,6 +67,13 @@ export const DEFAULT_SETTINGS = {
   easyDays: [1, 1, 1, 1, 1, 1, 1], // Monday..Sunday: 1 normal, 0.5 reduced, 0 minimum
   burySiblings: true, // a word's recognition and recall cards never both come up on the same day
   fsrsFit: null, // what the last fit found: { at, n, before, after, better }
+  hapticStrength: "normal", // light | normal | strong (how long the shortest pulse is)
+  surface: "material", // material (Material You) | glass (refracting liquid glass)
+  sound: true, // koto, taiko and katana effects
+  music: false, // quiet generative koto in the background while studying
+  volume: 0.8,
+  xpGoal: 50, // daily experience goal
+  mascot: true, // the little samurai on Today and at the end of sessions
   u: 0,
 };
 

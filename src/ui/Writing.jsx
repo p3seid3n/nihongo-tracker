@@ -5,6 +5,7 @@ import { Sheet, Seg, Burst, useApp, plural } from "./common.jsx";
 import { GRID, loadStrokes, pathPoints, pathLength, checkStroke, isWritable } from "../lib/strokes.js";
 import { KANJI_RE } from "../lib/jp.js";
 import * as hap from "../lib/haptics.js";
+import * as fx from "../lib/fx.js";
 
 /**
  * Drawing pad for one character. You draw each stroke; it is accepted only if its shape, direction
@@ -56,7 +57,8 @@ export function WritePad({ char, title, sub, initialMode = "trace", nextLabel = 
   useEffect(() => {
     if (finished && !reported.current) {
       reported.current = true;
-      hap.lesson();
+      // the character is finished: the blade cuts across the pad
+      fx.answer({ ok: mistakes <= 2, el: svg.current });
       onFinish?.({ mistakes, hints, ms: Date.now() - started.current, strokes: total });
     }
   }, [finished]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -258,7 +260,7 @@ export function WritingPlayer({ items, onClose }) {
       const slips = results.current.reduce((a, x) => a + (x.mistakes || 0), 0);
       const acc = strokes ? Math.max(0, 1 - slips / (strokes * 1.5)) : 1;
       store.logLesson("writing", acc, Date.now() - t0.current);
-      hap.done();
+      fx.finish({ big: false });
       setFinished(true);
     } else setI(i + 1);
   };

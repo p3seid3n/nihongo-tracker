@@ -6,6 +6,7 @@ import "./springs.css";
 import "./motion.css";
 import "./ink.css";
 import "./glass.css";
+import "./dojo.css";
 import App from "./App.jsx";
 import { ErrorBoundary } from "./ui/ErrorBoundary.jsx";
 import { registerServiceWorker } from "./registerSW.js";

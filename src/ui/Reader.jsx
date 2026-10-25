@@ -8,6 +8,7 @@ import { analyzePassage, coverageBand, BAND_LABEL, BANDS, recommend, orderPassag
 import { PASSAGES, READER_LEVELS, READER_WORDS } from "../content/reader.js";
 import { say, stop as stopAudio, markupPart } from "../lib/audio.js";
 import * as hap from "../lib/haptics.js";
+import * as fx from "../lib/fx.js";
 
 const pct = (c) => `${Math.floor(c * 100 + 1e-9)}%`;
 
@@ -94,7 +95,7 @@ function Passage({ r, onBack, onDone, toast }) {
   const toggleEn = (i) => setOpenEn((o) => { const n = new Set(o); if (n.has(i)) n.delete(i); else n.add(i); return n; });
   const finish = () => {
     store.markPractice("read", r.id, { ms: Date.now() - start.current });
-    hap.done();
+    fx.finish({ big: false });
     toast("Marked as read");
     onDone();
   };

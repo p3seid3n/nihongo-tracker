@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
-import { useApp, plural, Burst } from "./common.jsx";
+import { useApp, plural } from "./common.jsx";
 import { InkWord, Hanko } from "./Ink.jsx";
 import { buildSession, buildCounts, todayCounts, LEARN_AHEAD } from "../lib/queue.js";
 import { previewDelays, LEARNING, RELEARNING, NEW } from "../lib/fsrs.js";
@@ -10,6 +10,9 @@ import { deckOf, isProd, baseId } from "../lib/ids.js";
 import { kanjiOf } from "../lib/jp.js";
 import { computeStats } from "../lib/stats.js";
 import * as hap from "../lib/haptics.js";
+import * as fx from "../lib/fx.js";
+import { cardXp, comboBonus } from "../lib/game.js";
+import { Samurai, ComboChip, SessionXp, dojoFor } from "./Dojo.jsx";
 import { audioPlan, say, stop as stopAudio, wordPart, sentencePart, mediaUrl } from "../lib/audio.js";
 import { plainOf, readingOf } from "../lib/jp.js";
 import { SpeakBtn, MicBtn } from "./Voice.jsx";
@@ -59,6 +62,9 @@ export function Study({ opts = {}, onClose, onOpen }) {
   const [sheet, setSheet] = useState(null);
   const [history, setHistory] = useState([]);
   const [tally, setTally] = useState({ 1: 0, 2: 0, 3: 0, 4: 0, ms: 0 });
+  const [startXp] = useState(() => { try { return dojoFor(store).xp; } catch { return 0; } });
+  const flashRef = useRef(null);
+  const answered = useRef(new Set());
   const startRef = useRef(Date.now());
   const wordIndex = useRef(null);
   // which kanji read how, learned from all your vocabulary: lets furigana sit over each kanji
@@ -91,7 +97,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
     try { return previewDelays(rec, Date.now(), store.cfgFor(cur.id), cur.id); } catch { return null; }
   }, [cur, shown]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const reveal = useCallback(() => { if (cur && !shown && !isProd(cur.id)) { setShown(true); hap.reveal(); } }, [cur, shown]);
+  const reveal = useCallback(() => { if (cur && !shown && !isProd(cur.id)) { setShown(true); fx.reveal(); } }, [cur, shown]);
   const showRecall = useCallback((res) => { setRecallRes(res); setShown(true); }, []);
 
   const grade = useCallback((g) => {
@@ -115,7 +121,10 @@ export function Study({ opts = {}, onClose, onOpen }) {
     setLearnQ(nl);
     setCur(pickNext(store, nm, nl, nw));
     setShown(false);
-    if (g === 1) hap.again(); else if (g === 2) hap.hard(); else if (g === 3) hap.good(); else hap.easy();
+    const first = !answered.current.has(cur.id) && cur.src !== "learn";
+    answered.current.add(cur.id);
+    const xp = cardXp([0, cur.id, g, 0, entry.prev ? entry.prev.st : NEW], first) + (g >= 3 ? comboBonus(fx.currentCombo() + 1) : 0);
+    fx.answer({ grade: g, el: flashRef.current, xp });
     if (isLeechHit(entry.prev, nx, g)) setSheet({ type: "leech", id: baseId(cur.id), lapses: nx.lapses });
   }, [cur, shown, main, learnQ, weak, finished, tally, store]);
 
@@ -220,7 +229,7 @@ export function Study({ opts = {}, onClose, onOpen }) {
     return items;
   }, [card, deck, wp, sp, sentCard]);
 
-  if (!cur) return <Summary store={store} tally={tally} total={finished} onClose={onClose} onOpen={onOpen} opts={opts} />;
+  if (!cur) return <Summary store={store} tally={tally} total={finished} onClose={onClose} onOpen={onOpen} opts={opts} startXp={startXp} />;
   if (!card) return null;
 
   const dayTotal = initial.total + initial.doneBefore;
@@ -256,10 +265,11 @@ export function Study({ opts = {}, onClose, onOpen }) {
           <span className={`c-new ${curIsNew ? "cur" : ""}`}>{counters.nw + (curIsNew ? 1 : 0)} new</span>
           <span className={`c-learn ${cur.src === "learn" ? "cur" : ""}`}>{counters.ln} learning</span>
           <span className={`c-rev ${curIsRev ? "cur" : ""}`}>{counters.rv + (curIsRev ? 1 : 0)} review</span>
+          <ComboChip />
         </div>
 
         <div className="study-body">
-          <div className="flash card-in" key={cardKey} onClick={!shown && !isP && !pretest ? reveal : undefined}>
+          <div className="flash card-in" key={cardKey} ref={flashRef} onClick={!shown && !isP && !pretest ? reveal : undefined}>
             <div className="flash-head">
               <span className="chip tag">{deck?.name || ""}{isP ? " · Recall" : cur.src === "weak" ? " · Weak spot" : ""}</span>
               <div className="flash-tools">
@@ -389,13 +399,13 @@ function Back({ kind, card, related, sentence, recall, furi }) {
   );
 }
 
-function Summary({ store, tally, total, onClose, onOpen, opts }) {
+function Summary({ store, tally, total, onClose, onOpen, opts, startXp = 0 }) {
   const n = tally[1] + tally[2] + tally[3] + tally[4];
   const accuracy = n ? Math.round(((n - tally[1]) / n) * 100) : 0;
   const stats = useMemo(() => computeStats(store), []); // eslint-disable-line react-hooks/exhaustive-deps
   const tomorrow = stats.forecast[1]?.n || 0;
   const counts = useMemo(() => buildCounts(store, Date.now(), { deckId: opts.deckId }), []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (n > 0) hap.done(); }, [n]);
+  useEffect(() => { if (n > 0) fx.finish({ big: n >= 10 }); }, [n]);
   const mins = Math.max(1, Math.round(tally.ms / 60000));
   return (
     <div className="fullscreen">
@@ -409,9 +419,10 @@ function Summary({ store, tally, total, onClose, onOpen, opts }) {
             </>
           ) : (
             <>
-              <Burst />
-              <div className="big jp ink-host" lang="ja" style={{ fontSize: "4rem", color: "var(--primary)" }}><InkWord>完了</InkWord><Hanko className="hanko-corner" size={30} delay={240} /></div>
+              {store.settings.mascot !== false && <Samurai mood="cheer" size={86} />}
+              <div className="big jp ink-host" lang="ja" style={{ fontSize: "3.4rem", color: "var(--primary)" }}><InkWord>完了</InkWord><Hanko className="hanko-corner" size={30} delay={240} /></div>
               <h1>Session complete</h1>
+              <SessionXp startXp={startXp} />
               <div className="stat-row">
                 <div className="stat"><b>{n}</b><span>answers</span></div>
                 <div className="stat"><b>{accuracy}%</b><span>recalled</span></div>

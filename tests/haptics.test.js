@@ -57,3 +57,22 @@ describe("iPhone ticks", () => {
     for (let i = 1; i < t.length; i++) expect(t[i] - t[i - 1]).toBeGreaterThanOrEqual(30);
   });
 });
+
+import { shape } from "../src/lib/haptics.js";
+describe("stretching patterns to the motor (Samsung drops pulses under ~20 ms)", () => {
+  const S = { minPulse: 26, minGap: 48 };
+  it("never sends a pulse or gap shorter than the motor can play", () => {
+    for (const [name, p] of Object.entries(PATTERNS)) {
+      const out = shape(p, S);
+      out.forEach((d, i) => expect(d, `${name}[${i}]`).toBeGreaterThanOrEqual(i % 2 ? 48 : 26));
+      expect(out.length % 2, name).toBe(1);
+      expect(out.reduce((a, b) => a + b, 0), name).toBeLessThanOrEqual(1000);
+    }
+  });
+  it("keeps the rhythm: heavier pulses stay heavier", () => {
+    const again = shape(PATTERNS.again, S), good = shape(PATTERNS.good, S);
+    expect(Math.max(...again.filter((_, i) => i % 2 === 0))).toBeGreaterThan(Math.max(...good.filter((_, i) => i % 2 === 0)) - 1);
+    const easy = shape(PATTERNS.easy, S).filter((_, i) => i % 2 === 0);
+    expect(easy[easy.length - 1]).toBeGreaterThan(easy[0]);
+  });
+});

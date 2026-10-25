@@ -9,6 +9,25 @@
 let enabled = true;
 export function setHaptics(on) { enabled = !!on; }
 
+// Many phones (Samsung Galaxy in particular) drop vibrations shorter than about 15-20 ms and merge pulses
+// separated by tiny gaps, so the patterns below are "designed" lengths that get stretched to what the motor
+// can actually play: every pulse at least `minPulse`, every gap at least `minGap`, the rhythm kept.
+const STRENGTH = { light: { minPulse: 16, minGap: 40 }, normal: { minPulse: 26, minGap: 48 }, strong: { minPulse: 38, minGap: 55 } };
+let strength = STRENGTH.normal;
+export function setHapticStrength(level) { strength = STRENGTH[level] || STRENGTH.normal; }
+
+/** Stretch a designed pattern to the motor: pulses scaled so the shortest reaches minPulse, gaps to minGap. */
+export function shape(pattern, s = strength) {
+  const pulses = pattern.filter((_, i) => i % 2 === 0);
+  const shortest = Math.max(1, Math.min(...pulses));
+  const k = Math.max(1, s.minPulse / shortest);
+  const out = pattern.map((d, i) => (i % 2 === 0 ? Math.round(Math.min(160, Math.max(s.minPulse, d * Math.min(k, 3)))) : Math.round(Math.max(s.minGap, d))));
+  // keep long celebrations under a second
+  let total = out.reduce((a, b) => a + b, 0);
+  while (total > 1000 && out.length > 3) { out.splice(out.length - 2, 2); total = out.reduce((a, b) => a + b, 0); }
+  return out;
+}
+
 const isIOS = typeof navigator !== "undefined" && (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 const canVibrate = typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
 let iosLabel = null;
@@ -75,6 +94,12 @@ export const PATTERNS = {
   inkFlow: inkFlowPattern(),
   done: [12, 40, 12, 40, 14, 40, 18, 60, 44, 90, 12],   // session finished: build up, big thump, echo
   lesson: [10, 30, 14, 30, 18, 30, 26, 70, 46, 80, 10], // lesson finished
+  // the dojo
+  slash: [6, 16, 10, 16, 30],        // a blade cuts: a fast rising zip that ends in a hit
+  combo: [8, 20, 8, 20, 40, 60, 12], // drawn sword: two quick ticks, a hit and a ring
+  quest: [10, 40, 24],
+  badge: [12, 40, 12, 40, 50],
+  levelUp: [40, 90, 40, 90, 60, 140, 10, 30, 10, 30, 14], // three taiko hits, a ring
 };
 
 const MIN_TICK_GAP = 48; // iOS ticks closer than this blur into one
@@ -100,13 +125,19 @@ export function ticksFor(pattern) {
   return ticks;
 }
 
+/** What the last vibration call did: "ok", "refused" (the browser said no), "off", "ios" or "none". For Settings. */
+export let lastResult = "none";
 function fire(pattern) {
-  if (!enabled) return;
+  if (!enabled) { lastResult = "off"; return false; }
   try {
-    if (isIOS) ticksFor(pattern).forEach((d) => (d ? setTimeout(ios, d) : ios()));
-    else if (canVibrate) navigator.vibrate(pattern);
+    if (isIOS) { ticksFor(pattern).forEach((d) => (d ? setTimeout(ios, d) : ios())); lastResult = "ios"; return true; }
+    if (canVibrate) { const ok = navigator.vibrate(shape(pattern)); lastResult = ok ? "ok" : "refused"; return ok; }
   } catch { /* ignore */ }
+  lastResult = "none";
+  return false;
 }
+/** Play any named pattern; returns whether the browser accepted it. */
+export const play = (name) => fire(PATTERNS[name] || PATTERNS.tap);
 
 const make = (name) => () => fire(PATTERNS[name]);
 
@@ -142,6 +173,11 @@ export const bad = make("wrong");
 /** Session or lesson finished. */
 export const done = make("done");
 export const lesson = make("lesson");
+export const slash = make("slash");
+export const combo = make("combo");
+export const quest = make("quest");
+export const badge = make("badge");
+export const levelUp = make("levelUp");
 
 /** Length of a pattern in ms. */
 export const patternLength = (p) => p.reduce((a, b) => a + b, 0);

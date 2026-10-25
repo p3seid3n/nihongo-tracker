@@ -10,6 +10,7 @@ import { PROMPTS } from "../content/prompts.js";
 import { READER_WORDS } from "../content/reader.js";
 import { markupPart } from "../lib/audio.js";
 import * as hap from "../lib/haptics.js";
+import * as fx from "../lib/fx.js";
 
 const LEVEL = { 1: "Starter", 2: "Easy", 3: "Medium" };
 
@@ -64,7 +65,7 @@ function Prompt({ p, lex, onBack, toast }) {
   };
   const finish = () => {
     store.markPractice("out", p.id, { ms: Date.now() - start.current });
-    hap.done();
+    fx.finish({ big: false });
     toast("Saved to your practice");
     onBack();
   };

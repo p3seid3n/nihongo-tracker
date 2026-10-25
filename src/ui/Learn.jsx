@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "./icons.jsx";
 import { Furi, Sentence } from "./Furi.jsx";
 import { Rich, ExerciseRunner } from "./Exercises.jsx";
-import { useApp, useNow, PageHead, plural, Sheet, Burst } from "./common.jsx";
+import { useApp, useNow, PageHead, plural, Sheet } from "./common.jsx";
 import { InkWord, Hanko } from "./Ink.jsx";
+import { Samurai, SessionXp, dojoFor } from "./Dojo.jsx";
+import * as fx from "../lib/fx.js";
 import { UNITS, LESSONS, LESSON_BY_ID, SOURCE, taeKimUrl } from "../content/lessons.js";
 import { LessonTable } from "./LessonTable.jsx";
 import { buildLessonExercises, buildReviewExercises, lessonExamples } from "../lib/exercises.js";
@@ -125,6 +127,7 @@ export function LessonPlayer({ id, onClose, onOpen }) {
   const [runKey, setRunKey] = useState(0);
   const [err, setErr] = useState("");
   const [result, setResult] = useState(null);
+  const [startXp] = useState(() => { try { return dojoFor(store).xp; } catch { return 0; } });
   useEffect(() => { if (saved && (saved.stage === "practice" || saved.page > 0)) toast("Picked up where you left off"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (stage === "learn") saveResume(key, { stage: "learn", page }); }, [stage, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -150,7 +153,7 @@ export function LessonPlayer({ id, onClose, onOpen }) {
     clearResume(key);
     setResult({ acc, rec, passed: acc >= 0.6, r });
     setStage("result");
-    hap.lesson();
+    if (acc >= 0.6) fx.finish({ big: true }); else hap.lesson();
   };
 
   if (stage === "practice") {
@@ -169,9 +172,10 @@ export function LessonPlayer({ id, onClose, onOpen }) {
     return (
       <Shell onClose={onClose}>
         <div className="lesson-body" style={{ alignItems: "center", textAlign: "center", paddingTop: 40 }}>
-          {result.passed && <Burst />}
-          <div className="big jp ink-host" lang="ja" style={{ fontSize: "4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}><InkWord>{result.acc >= 1 ? "完璧" : result.passed ? "合格" : "もう一度"}</InkWord>{result.passed && <Hanko className="hanko-corner" size={30} delay={230} />}</div>
+          {store.settings.mascot !== false && <Samurai mood={result.passed ? "cheer" : "sad"} size={80} />}
+          <div className="big jp ink-host" lang="ja" style={{ fontSize: "3.4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}><InkWord>{result.acc >= 1 ? "完璧" : result.passed ? "合格" : "もう一度"}</InkWord>{result.passed && <Hanko className="hanko-corner" size={30} delay={230} />}</div>
           <h1>{result.passed ? "Lesson complete" : "Almost there"}</h1>
+          <SessionXp startXp={startXp} />
           <div className="stat-row">
             <div className="stat"><b>{Math.round(result.acc * 100)}%</b><span>correct first try</span></div>
             <div className="stat"><b>{result.r.correct}/{result.r.total}</b><span>exercises</span></div>
@@ -285,6 +289,7 @@ export function PracticePlayer({ mode, unitId, onClose }) {
   }
   const restart = () => { clearResume(key); setState(build()); setRestarts((n) => n + 1); };
   const [result, setResult] = useState(null);
+  const [startXp] = useState(() => { try { return dojoFor(store).xp; } catch { return 0; } });
 
   const finish = (r) => {
     const acc = r.total ? r.correct / r.total : 0;
@@ -303,7 +308,7 @@ export function PracticePlayer({ mode, unitId, onClose }) {
     store.logLesson(mode === "sentences" ? "sentences" : mode, acc, r.ms);
     clearResume(key);
     setResult({ acc, passed, note, r });
-    hap.done();
+    if (passed) fx.finish({ big: mode !== "sentences" }); else hap.done();
   };
 
   if (!state.list.length) {
@@ -321,9 +326,10 @@ export function PracticePlayer({ mode, unitId, onClose }) {
     return (
       <Shell>
         <div className="lesson-body" style={{ alignItems: "center", textAlign: "center", paddingTop: 40 }}>
-          {result.passed && <Burst />}
-          <div className="big jp ink-host" lang="ja" style={{ fontSize: "4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}><InkWord>{result.passed ? "完了" : "残念"}</InkWord>{result.passed && <Hanko className="hanko-corner" size={30} delay={230} />}</div>
+          {store.settings.mascot !== false && <Samurai mood={result.passed ? "cheer" : "sad"} size={80} />}
+          <div className="big jp ink-host" lang="ja" style={{ fontSize: "3.4rem", color: result.passed ? "var(--primary)" : "var(--rose)" }}><InkWord>{result.passed ? "完了" : "残念"}</InkWord>{result.passed && <Hanko className="hanko-corner" size={30} delay={230} />}</div>
           <h1>{mode === "testout" ? (result.passed ? "Unit skipped" : "Not this time") : "Practice complete"}</h1>
+          <SessionXp startXp={startXp} />
           <div className="stat-row">
             <div className="stat"><b>{Math.round(result.acc * 100)}%</b><span>correct first try</span></div>
             <div className="stat"><b>{result.r.correct}/{result.r.total}</b><span>exercises</span></div>

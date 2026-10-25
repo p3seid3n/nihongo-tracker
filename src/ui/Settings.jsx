@@ -5,6 +5,9 @@ import { parseSteps } from "../lib/store.js";
 import { signOut, cloudConfigured } from "../lib/auth.js";
 import { setHaptics, canHaptic, onIOS } from "../lib/haptics.js";
 import * as hap from "../lib/haptics.js";
+import { sfx, unlockSound } from "../lib/sound.js";
+import { supportsRefraction } from "../lib/liquidGlass.js";
+import { GOALS } from "../lib/game.js";
 import { SOURCE } from "../content/lessons.js";
 import { loadVoices, pickVoice, say, getAudioInfo, clearAudio, ttsSupported, audioPlan } from "../lib/audio.js";
 import { KANJI_FONTS, ensureFont } from "../lib/fonts.js";
@@ -13,7 +16,7 @@ import MemoryModel from "./MemoryModel.jsx";
 import { Library } from "./Library.jsx";
 import { PACE, EARLY_LESSONS, grammarInterval } from "../lib/plan.js";
 
-export const APP_VERSION = "4.9.0";
+export const APP_VERSION = "5.0.0";
 
 function Row({ title, sub, children }) {
   return (
@@ -300,33 +303,53 @@ export function Settings() {
           </div>
           <KanjiFontPicker value={s.kanjiFont || "mincho"} onChange={(v) => set({ kanjiFont: v })} />
         </Section>
-        <Section title="Appearance">
+        <Section title="Design" hint={s.surface === "glass" ? (supportsRefraction() ? "This browser renders real refraction: the dock, sheets and panels bend the light behind them." : "This browser can't bend light through the page (that needs Chrome, Brave, Edge or Samsung Internet), so the glass is frosted instead.") : "Material You: solid, tonal surfaces. The original look."}>
+          <DesignPicker value={s.surface === "glass" ? "glass" : "material"} onChange={(v) => { set({ surface: v }); hap.snap(); }} />
           <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
             <div>Theme</div>
             <Seg label="Theme" value={s.theme} onChange={(v) => set({ theme: v })} options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }, { value: "system", label: "System" }]} />
           </div>
           <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
-            <div><div>Animations</div><div className="small dim">Springy motion. Reduced keeps screens still. Follows your device's reduce-motion setting too.</div></div>
+            <div><div>Animations</div><div className="small dim">Springy motion, blade slashes and falling sakura. Reduced keeps screens still. Follows your device's reduce-motion setting too.</div></div>
             <Seg label="Animations" value={s.motion || "full"} onChange={(v) => set({ motion: v })} options={[{ value: "full", label: "Full" }, { value: "reduced", label: "Reduced" }]} />
           </div>
         </Section>
-        <Section title="Touch">
-          <Row title="Haptic feedback" sub={canHaptic ? (onIOS ? "Taps and answers play a light tick (iOS 17.4 or newer)" : "Layered vibration patterns: crisp taps, a different feel for each grade, and a long roll when you finish") : "This browser can't vibrate. Works on Android Chrome and iPhone Safari."}><Switch checked={s.haptics} onChange={(v) => { set({ haptics: v }); setHaptics(v); if (v) hap.medium(); }} label="Haptics" /></Row>
-          {s.haptics && canHaptic && (
-            <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }} data-haptic="none">
-              <div><div>Try haptics</div><div className="small dim">Each answer and moment has its own rhythm</div></div>
-              <div className="row-wrap">
-                <button className="btn btn-soft btn-sm" onClick={hap.tap}>Tap</button>
-                <button className="btn btn-soft btn-sm" onClick={hap.again}>Again</button>
-                <button className="btn btn-soft btn-sm" onClick={hap.hard}>Hard</button>
-                <button className="btn btn-soft btn-sm" onClick={hap.good}>Good</button>
-                <button className="btn btn-soft btn-sm" onClick={hap.easy}>Easy</button>
-                <button className="btn btn-soft btn-sm" onClick={hap.inkFlow}>Ink flow</button>
-                <button className="btn btn-soft btn-sm" onClick={hap.stamp}>Stamp</button>
-                <button className="btn btn-soft btn-sm" onClick={hap.done}>Finished</button>
+        <Section title="Dojo" hint="Experience points come from every answer, lesson and practice set. Ranks go from 十級 (white belt) to 十段.">
+          <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+            <div><div>Daily goal</div><div className="small dim">{GOALS.find((g) => g.value === (s.xpGoal || 50))?.jp} · {s.xpGoal || 50} XP a day. About {Math.round((s.xpGoal || 50) / 3)} answers.</div></div>
+            <Seg label="Daily goal" value={s.xpGoal || 50} onChange={(v) => set({ xpGoal: v })} options={GOALS.map((g) => ({ value: g.value, label: g.label }))} />
+          </div>
+          <Row title="Samurai" sub="Your little companion on Today and at the end of sessions"><Switch checked={s.mascot !== false} onChange={(v) => set({ mascot: v })} label="Samurai" /></Row>
+        </Section>
+        <Section title="Sound" hint="Everything is played by instruments synthesised on the device: koto, shamisen, taiko, shakuhachi, wind chimes and the ring of a blade.">
+          <Row title="Sound effects" sub="Koto notes that climb with your combo, taiko for big moments"><Switch checked={s.sound !== false} onChange={(v) => { set({ sound: v }); if (v) setTimeout(() => { unlockSound(); sfx.good(2); }, 30); }} label="Sound effects" /></Row>
+          <Row title="Music" sub="Quiet koto in the background, never over spoken words"><Switch checked={!!s.music} onChange={(v) => { set({ music: v }); setTimeout(unlockSound, 30); }} label="Music" /></Row>
+          {(s.sound !== false || s.music) && (
+            <>
+              <div className="list-item stack" style={{ alignItems: "stretch", gap: 6 }}>
+                <div className="spread"><span>Volume</span><span className="small dim num">{Math.round((s.volume ?? 0.8) * 100)}%</span></div>
+                <input type="range" className="range" min="0.1" max="1" step="0.05" value={s.volume ?? 0.8} onChange={(e) => set({ volume: Number(e.target.value) })} aria-label="Volume" />
               </div>
+              <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }} data-haptic="none">
+                <div>Try sounds</div>
+                <div className="row-wrap">
+                  {[["Correct", () => sfx.correct(3)], ["Wrong", () => sfx.wrong()], ["Combo", () => sfx.combo(10)], ["Finished", () => sfx.finish()], ["New rank", () => sfx.levelUp()], ["Achievement", () => sfx.badge()]].map(([label, run]) => (
+                    <button key={label} className="btn btn-soft btn-sm" onClick={() => { unlockSound(); run(); }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </Section>
+        <Section title="Touch">
+          <Row title="Haptic feedback" sub={canHaptic ? (onIOS ? "Taps and answers play a light tick (iOS 17.4 or newer)" : "A different feel for each grade, combos and big moments") : "This browser can't vibrate. Works on Android Chrome and iPhone Safari."}><Switch checked={s.haptics} onChange={(v) => { set({ haptics: v }); setHaptics(v); if (v) hap.medium(); }} label="Haptics" /></Row>
+          {s.haptics && canHaptic && !onIOS && (
+            <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }}>
+              <div><div>Strength</div><div className="small dim">Some phones (Samsung Galaxy among them) skip very short pulses. Stronger makes every pulse long enough to be felt.</div></div>
+              <Seg label="Haptic strength" value={s.hapticStrength || "normal"} onChange={(v) => { set({ hapticStrength: v }); hap.setHapticStrength(v); hap.good(); }} options={[{ value: "light", label: "Light" }, { value: "normal", label: "Normal" }, { value: "strong", label: "Strong" }]} />
             </div>
           )}
+          {s.haptics && canHaptic && <HapticTry />}
         </Section>
       </Sub>
     );
@@ -387,7 +410,7 @@ export function Settings() {
         <div className="section-title"><h2>App</h2></div>
         <div className="list">
           <MenuRow id="sound" icon="volume" title="Listening and speaking" sub="Audio, voice, pronunciation check" onClick={() => setPage("sound")} />
-          <MenuRow id="look" icon="eye" title="Look and feel" sub="Furigana, kanji font, theme, haptics" onClick={() => setPage("look")} />
+          <MenuRow id="look" icon="eye" title="Look and feel" sub="Design, dojo, sound, haptics, furigana" onClick={() => setPage("look")} />
           <MenuRow id="data" icon="download" title="Backup and import" sub="Anki decks, backup file" onClick={() => setPage("data")} />
           <MenuRow id="about" icon="info" title="About" sub={`Kotoba ${APP_VERSION}`} onClick={() => setPage("about")} />
         </div>
@@ -439,3 +462,48 @@ function SchedulingSection({ s, set }) {
   );
 }
 
+
+/** Material You or liquid glass, each shown as a little picture of the dock. */
+function DesignPicker({ value, onChange }) {
+  const opts = [
+    { value: "material", label: "Material You", sub: "Solid and tonal" },
+    { value: "glass", label: "Liquid glass", sub: "Bends the light" },
+  ];
+  return (
+    <div className="design-pick" role="radiogroup" aria-label="Design">
+      {opts.map((o) => (
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} className={`dp ${o.value} ${value === o.value ? "on" : ""}`} onClick={() => onChange(o.value)}>
+          <span className="dp-view" aria-hidden="true">
+            <i className="dp-blob a" /><i className="dp-blob b" /><i className="dp-lines" />
+            <span className="dp-dock"><span className="dp-pill" /><i /><i /><i /><i /></span>
+          </span>
+          <b>{o.label}</b>
+          <small>{o.sub}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Try the patterns, and say plainly whether the browser accepted them. */
+function HapticTry() {
+  const [res, setRes] = useState(null);
+  const run = (name) => { const ok = hap.play(name); setRes(onIOS ? "ios" : ok ? "ok" : hap.lastResult); };
+  const msg = {
+    ok: "The browser accepted it. If you felt nothing, try Strong, and check that vibration for touch is on in your phone's sound and vibration settings (power saving can switch it off).",
+    refused: "The browser refused to vibrate. Tap anywhere on the page once and try again; if it still refuses, vibration is blocked for this site or by the phone.",
+    none: "This browser has no vibration support.",
+    ios: "iPhone plays a system tick for each pulse.",
+  }[res];
+  return (
+    <div className="list-item stack" style={{ alignItems: "stretch", gap: 10 }} data-haptic="none">
+      <div><div>Try haptics</div><div className="small dim">Each answer and moment has its own rhythm</div></div>
+      <div className="row-wrap">
+        {[["Tap", "tap"], ["Again", "again"], ["Hard", "hard"], ["Good", "good"], ["Easy", "easy"], ["Combo", "combo"], ["Slash", "slash"], ["New rank", "levelUp"], ["Finished", "done"]].map(([label, name]) => (
+          <button key={name} className="btn btn-soft btn-sm" onClick={() => run(name)}>{label}</button>
+        ))}
+      </div>
+      {msg && <div className={`small ${res === "refused" ? "error-text" : "dim"}`} role="status">{msg}</div>}
+    </div>
+  );
+}

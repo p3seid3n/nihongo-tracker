@@ -2,6 +2,7 @@
 // phone's Japanese text-to-speech voice as the fallback.
 import { createStore, get as idbGet, set as idbSet, clear as idbClear } from "idb-keyval";
 import { plainOf } from "./jp.js";
+import { duckMusic } from "./sound.js";
 
 let prefs = { autoplay: true, rate: 1, voiceURI: "" };
 export function setAudioPrefs(p) { prefs = { ...prefs, ...p }; }
@@ -151,9 +152,14 @@ export async function say(part) {
   const my = ++token;
   stop();
   token = my;
-  if (part.file && (await playClip(part.file, my))) return true;
-  if (my !== token) return false;
-  return speak(part.text, my);
+  duckMusic(true); // the background music steps back while Japanese is spoken
+  try {
+    if (part.file && (await playClip(part.file, my))) return true;
+    if (my !== token) return false;
+    return await speak(part.text, my);
+  } finally {
+    if (my === token) duckMusic(false);
+  }
 }
 
 /** First user gesture: unlocks audio and speech on iOS so later auto-play works. */

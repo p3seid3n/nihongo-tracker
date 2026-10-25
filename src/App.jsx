@@ -6,9 +6,12 @@ import { supabaseRemote } from "./lib/sync.js";
 import { withAutoSetup } from "./lib/cloudSetup.js";
 import { getSession, onAuthChange, signOut } from "./lib/auth.js";
 import { knownKanjiSet } from "./lib/personal.js";
-import { setHaptics, tick, toggleOn, toggleOff, onIOS, canHaptic } from "./lib/haptics.js";
+import { setHaptics, setHapticStrength, tick, toggleOn, toggleOff, onIOS, canHaptic } from "./lib/haptics.js";
 import { setAudioPrefs, unlockAudio } from "./lib/audio.js";
 import { lockScroll } from "./lib/scrollLock.js";
+import { startLiquidGlass, stopLiquidGlass } from "./lib/liquidGlass.js";
+import { setSoundPrefs, unlockSound, renderPeak } from "./lib/sound.js";
+import { FxLayer, DojoWatcher } from "./ui/Dojo.jsx";
 import { applyKanjiFont } from "./lib/fonts.js";
 import { AppCtx, PauseCtx, ConfirmSheet, Toasts, useToasts, Banner, scrollToTop } from "./ui/common.jsx";
 import { Icon } from "./ui/icons.jsx";
@@ -26,6 +29,17 @@ import { Output } from "./ui/Output.jsx";
 import PitchPractice from "./ui/PitchPractice.jsx";
 import { Stats } from "./ui/Stats.jsx";
 import { Settings } from "./ui/Settings.jsx";
+
+// what bends light in the glass design, and how strongly (bezel: width of the curved rim in px, strength: how far
+// light is shifted there in px, pre/post: ordinary CSS filters around the refraction)
+const GLASS_RULES = [
+  { sel: ".nav-inner", opts: { bezel: 22, strength: 18, pre: "blur(2px)", post: "saturate(1.5) brightness(1.06)" } },
+  { sel: ".toast", opts: { bezel: 14, strength: 10, pre: "blur(6px)" } },
+  { sel: ".sheet", opts: { bezel: 26, strength: 16, pre: "blur(10px)", post: "saturate(1.4)" } },
+  { sel: ".result-sheet", opts: { bezel: 24, strength: 16, pre: "blur(5px)", post: "saturate(1.5)" } },
+  { sel: ".study-top .icon-btn", opts: { bezel: 14, strength: 9, post: "saturate(1.4) brightness(1.08)" } },
+  { sel: ".glass", opts: { bezel: 20, strength: 14, pre: "blur(2px)" } },
+];
 
 const TABS = [
   { id: "home", label: "Today", icon: "home" },
@@ -111,6 +125,7 @@ export default function App() {
         setPhase("ready");
         window.__ntBooted = true;
         window.__ntStore = store;
+        window.__ntSound = renderPeak; // for tests: render a sound offline and report its peak
         window.dispatchEvent(new Event("nt-booted"));
         try { navigator.storage?.persist?.(); } catch { /* ignore */ }
       } catch (e) {
@@ -271,6 +286,7 @@ export default function App() {
     return () => mq.removeEventListener?.("change", apply);
   }, [themeSetting]);
   useEffect(() => { setHaptics(store.settings.haptics); }, [store.settings.haptics, store]);
+  useEffect(() => { setHapticStrength(store.settings.hapticStrength || "normal"); }, [store.settings.hapticStrength]);
   useEffect(() => { setAudioPrefs({ autoplay: store.settings.autoplay, rate: store.settings.speechRate, voiceURI: store.settings.voiceURI }); }, [store.settings.autoplay, store.settings.speechRate, store.settings.voiceURI, store]);
   useEffect(() => {
     // the first tap unlocks audio and speech on iPhone so auto-play can work later
@@ -284,6 +300,23 @@ export default function App() {
     document.documentElement.dataset.motion = motionSetting === "reduced" ? "reduced" : "full";
     try { localStorage.setItem("nt-motion", motionSetting === "reduced" ? "reduced" : "full"); } catch { /* ignore */ }
   }, [motionSetting]);
+  const surface = store.settings.surface === "glass" ? "glass" : "material";
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.surface = surface;
+    if (surface === "glass") root.dataset.lg = startLiquidGlass(GLASS_RULES) ? "on" : "off";
+    else { stopLiquidGlass(); delete root.dataset.lg; }
+  }, [surface, phase]);
+  const { sound: soundOn = true, music: musicOn = false, volume = 0.8 } = store.settings;
+  useEffect(() => { setSoundPrefs({ sfx: soundOn !== false, music: !!musicOn, volume: volume ?? 0.8 }); }, [soundOn, musicOn, volume]);
+  useEffect(() => {
+    // browsers start audio suspended until a tap
+    const evs = ["pointerup", "click", "keydown"];
+    const off = () => evs.forEach((e) => document.removeEventListener(e, once, true));
+    function once() { if (unlockSound()) off(); }
+    evs.forEach((e) => document.addEventListener(e, once, true));
+    return off;
+  }, []);
   const kanjiFontSetting = store.settings.kanjiFont;
   useEffect(() => { applyKanjiFont(kanjiFontSetting || "mincho"); }, [kanjiFontSetting]);
 
@@ -374,6 +407,8 @@ export default function App() {
       {ownerPrompt && <OwnerSheet prompt={ownerPrompt} onChoose={resolveOwner} email={session?.user?.email} />}
       {confirmState && <ConfirmSheet options={confirmState.options} onResolve={(v) => { confirmState.resolve(v); setConfirmState(null); }} />}
       <Toasts items={toastItems} dismiss={dismiss} />
+      {phase === "ready" && store.settings.onboarded && <DojoWatcher busy={!!overlay} />}
+      <FxLayer />
     </AppCtx.Provider>
   );
 }

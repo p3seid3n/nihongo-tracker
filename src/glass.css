@@ -1,6 +1,14 @@
-/* Liquid glass: translucent surfaces that blur and brighten what is behind them, with a lit top edge and a
-   highlight that follows your finger. Used for the dock, sheets, toasts and the answer panel. */
-:root {
+/* Two designs (Settings → Look and feel → Design):
+     material  Material You, the original: solid tonal surfaces. The default.
+     glass     Liquid glass: controls float over the page as glass that bends the light behind it (real refraction in
+               Chromium browsers, see lib/liquidGlass.js; frosted glass elsewhere), over a slowly moving wash of colour.
+   The motion further down applies to both. */
+
+/* ---------- Material You: the answer panel is a solid tonal surface ---------- */
+:root:not([data-surface="glass"]) .result-sheet { background: var(--rs-c); }
+
+/* ---------- glass tokens ---------- */
+:root[data-surface="glass"] {
   --glass-a: rgba(44, 40, 38, 0.74);
   --glass-b: rgba(30, 28, 27, 0.62);
   --glass-edge: rgba(255, 255, 255, 0.09);
@@ -8,65 +16,102 @@
   --glass-spec: rgba(255, 255, 255, 0.14);
   --glass-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.75), 0 2px 8px -2px rgba(0, 0, 0, 0.3);
   --glass-blur: blur(26px) saturate(185%);
+  /* real refraction: far clearer, the rim does the work */
+  --lg-tint: rgba(36, 33, 31, 0.4);
+  --lg-tint-strong: rgba(30, 28, 27, 0.72);
 }
-:root[data-theme="light"] {
+:root[data-surface="glass"][data-theme="light"] {
   --glass-a: rgba(255, 255, 255, 0.8); --glass-b: rgba(250, 246, 242, 0.7);
   --glass-edge: rgba(255, 255, 255, 0.75); --glass-hi: rgba(255, 255, 255, 0.95); --glass-spec: rgba(255, 255, 255, 0.55);
   --glass-shadow: 0 16px 40px -18px rgba(60, 40, 20, 0.35), 0 2px 8px -2px rgba(60, 40, 20, 0.12);
+  --lg-tint: rgba(255, 255, 255, 0.46); --lg-tint-strong: rgba(255, 252, 249, 0.8);
 }
 @media (prefers-color-scheme: light) {
-  :root[data-theme="system"] {
+  :root[data-surface="glass"][data-theme="system"] {
     --glass-a: rgba(255, 255, 255, 0.8); --glass-b: rgba(250, 246, 242, 0.7);
     --glass-edge: rgba(255, 255, 255, 0.75); --glass-hi: rgba(255, 255, 255, 0.95); --glass-spec: rgba(255, 255, 255, 0.55);
     --glass-shadow: 0 16px 40px -18px rgba(60, 40, 20, 0.35), 0 2px 8px -2px rgba(60, 40, 20, 0.12);
+    --lg-tint: rgba(255, 255, 255, 0.46); --lg-tint-strong: rgba(255, 252, 249, 0.8);
   }
 }
 
-.glass, .nav-inner, .toast, .sheet {
+/* ---------- glass: frosted (every browser) ---------- */
+:root[data-surface="glass"] :is(.nav-inner, .toast, .sheet, .glass) {
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-edge);
   box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 rgba(255, 255, 255, 0.03), var(--glass-shadow);
   isolation: isolate;
 }
-.glass::before, .nav-inner::before, .toast::before {
+:root[data-surface="glass"] :is(.nav-inner, .toast, .glass)::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
   background:
     radial-gradient(140px 70px at var(--mx, 28%) -10%, var(--glass-spec), transparent 70%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 40%);
-  transition: background-position .3s;
 }
-.toast { position: relative; background: linear-gradient(180deg, var(--glass-a), var(--glass-b)); }
-.toast > * { position: relative; z-index: 1; }
+:root[data-surface="glass"] .toast { position: relative; background: linear-gradient(180deg, var(--glass-a), var(--glass-b)); }
+:root[data-surface="glass"] .toast > * { position: relative; z-index: 1; }
 
 /* the dock floats over the page; only a soft fade at the very bottom keeps the home indicator readable */
-.nav { background: linear-gradient(to top, color-mix(in srgb, var(--bg) 85%, transparent) 0, color-mix(in srgb, var(--bg) 0%, transparent) 70%); }
-.nav-inner { background: linear-gradient(180deg, var(--glass-a), var(--glass-b)); border-radius: 30px; }
-.nav-pill {
+:root[data-surface="glass"] .nav { background: linear-gradient(to top, color-mix(in srgb, var(--bg) 85%, transparent) 0, color-mix(in srgb, var(--bg) 0%, transparent) 70%); }
+:root[data-surface="glass"] .nav-inner { background: linear-gradient(180deg, var(--glass-a), var(--glass-b)); border-radius: 30px; }
+:root[data-surface="glass"] .nav-pill {
   background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 42%, transparent), color-mix(in srgb, var(--primary) 22%, transparent));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -8px 16px rgba(0, 0, 0, 0.14), 0 6px 18px -6px color-mix(in srgb, var(--primary) 55%, transparent);
   -webkit-backdrop-filter: saturate(200%) brightness(1.12); backdrop-filter: saturate(200%) brightness(1.12);
-  transform-origin: center;
-  will-change: transform;
 }
-.nav-item[aria-current="page"] { color: var(--on-primary-c); }
-:root[data-theme="light"] .nav-item[aria-current="page"] { color: var(--on-primary-c); }
+:root[data-surface="glass"] .nav-item[aria-current="page"] { color: var(--on-primary-c); }
 
-/* sheets: frosted, still easy to read */
-.sheet { background: linear-gradient(180deg, color-mix(in srgb, var(--s2) 86%, transparent), color-mix(in srgb, var(--s2) 94%, transparent)); border-bottom: 0; }
-.scrim { background: rgb(0 0 0 / 0.42); }
+:root[data-surface="glass"] .sheet { background: linear-gradient(180deg, color-mix(in srgb, var(--s2) 86%, transparent), color-mix(in srgb, var(--s2) 94%, transparent)); border-bottom: 0; }
+:root[data-surface="glass"] .scrim { background: rgb(0 0 0 / 0.42); }
 
-/* the answer panel */
-.result-sheet { -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); border: 1px solid color-mix(in srgb, var(--rs) 18%, transparent); border-bottom: 0;
+:root[data-surface="glass"] .result-sheet { -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); border: 1px solid color-mix(in srgb, var(--rs) 18%, transparent); border-bottom: 0;
   background: linear-gradient(180deg, color-mix(in srgb, var(--rs-c) 82%, transparent), color-mix(in srgb, var(--rs-c) 92%, transparent));
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent), 0 -14px 40px -20px rgba(0, 0, 0, 0.7); }
-.result-sheet::before { content: none; }
 
-/* study screen: the top controls sit on glass discs */
-.study-top .icon-btn { background: linear-gradient(180deg, var(--glass-a), var(--glass-b)); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--glass-hi), 0 6px 16px -10px rgba(0,0,0,.6); }
-.grade { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 8px 20px -14px rgba(0, 0, 0, 0.7); }
+:root[data-surface="glass"] .result-sheet::before { content: none; }
+:root[data-surface="glass"] .study-top .icon-btn { background: linear-gradient(180deg, var(--glass-a), var(--glass-b)); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--glass-hi), 0 6px 16px -10px rgba(0,0,0,.6); }
+:root[data-surface="glass"] .grade { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 8px 20px -14px rgba(0, 0, 0, 0.7); }
 
-/* ---------- dynamic: content reacts to scrolling (where the browser supports scroll-driven animations) ---------- */
+/* ---------- glass: real refraction (the engine adds .lg and its own backdrop-filter) ---------- */
+/* clear glass, the specular rim from the engine drawn on top of a faint tint */
+:root[data-surface="glass"] .glass.lg { background: var(--lg-spec, none) center / 100% 100% no-repeat, var(--lg-tint); border-color: transparent; }
+:root[data-surface="glass"] .nav-inner.lg { background: var(--lg-spec, none) center / 100% 100% no-repeat, var(--lg-tint); border-color: transparent; box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.2); }
+:root[data-surface="glass"] .nav-inner.lg::before { background: radial-gradient(120px 60px at var(--mx, 28%) -20%, rgba(255, 255, 255, 0.12), transparent 70%); }
+:root[data-surface="glass"] .toast.lg { background: var(--lg-spec, none) center / 100% 100% no-repeat, var(--lg-tint-strong); border-color: transparent; }
+:root[data-surface="glass"] .sheet.lg { background: var(--lg-spec, none) center / 100% 100% no-repeat, linear-gradient(180deg, var(--lg-tint-strong), color-mix(in srgb, var(--s2) 92%, transparent)); border-color: transparent; }
+:root[data-surface="glass"] .result-sheet.lg { background: var(--lg-spec, none) center / 100% 100% no-repeat, color-mix(in srgb, var(--rs-c) 74%, transparent); border-color: transparent; }
+:root[data-surface="glass"] .study-top .icon-btn.lg { background: var(--lg-spec, none) center / 100% 100% no-repeat, var(--lg-tint); box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.6); }
+/* the pill in the dock: a drop of tinted glass */
+:root[data-surface="glass"] .nav-inner.lg .nav-pill {
+  background: radial-gradient(120% 90% at 30% 10%, rgba(255, 255, 255, 0.28), transparent 55%), color-mix(in srgb, var(--primary) 30%, transparent);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.45), inset 0 -2px 6px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 4px 14px -4px color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+/* ---------- glass: a slow wash of colour behind everything, so the glass has light to bend ---------- */
+:root[data-surface="glass"] .app::before {
+  content: ""; position: fixed; inset: -20%; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(40% 30% at 18% 22%, color-mix(in srgb, var(--primary) 26%, transparent), transparent 70%),
+    radial-gradient(36% 28% at 82% 30%, color-mix(in srgb, var(--sky) 20%, transparent), transparent 70%),
+    radial-gradient(42% 34% at 30% 78%, color-mix(in srgb, var(--sage) 18%, transparent), transparent 70%),
+    radial-gradient(30% 24% at 78% 82%, color-mix(in srgb, var(--rose) 18%, transparent), transparent 70%);
+  filter: blur(20px);
+  animation: wash 38s ease-in-out infinite alternate;
+}
+:root[data-surface="glass"] .app-scroll { z-index: 1; }
+:root[data-surface="glass"] .nav { z-index: 30; }
+@keyframes wash {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) rotate(8deg) scale(1.08); }
+  100% { transform: translate3d(-3%, 4%, 0) rotate(-6deg) scale(1.02); }
+}
+/* cards in the glass design let a hint of the wash through */
+:root[data-surface="glass"] .card, :root[data-surface="glass"] .plan-hero { background-color: color-mix(in srgb, var(--s1) 86%, transparent); }
+:root[data-motion="reduced"][data-surface="glass"] .app::before { animation: none; }
+@media (prefers-reduced-motion: reduce) { :root[data-surface="glass"] .app::before { animation: none; } }
+
+/* ---------- motion (both designs): content reacts to scrolling ---------- */
 @supports (animation-timeline: view()) {
   :root:not([data-motion="reduced"]) .plan .step,
   :root:not([data-motion="reduced"]) .list > .list-item,
@@ -92,8 +137,6 @@
 .app-scroll[data-dir="r"] .page > * { animation-name: slide-from-r, enter-o; }
 .app-scroll[data-dir="l"] .page > * { animation-name: slide-from-l, enter-o; }
 
-@media (prefers-reduced-motion: reduce) {
-  .glass::before, .nav-inner::before { transition: none; }
-}
-.nav-pill { transition: none; transform: translateX(calc(var(--i, 0) * 100%)); }
+/* the pill is moved by script (a liquid stretch), so no transition fights it */
+.nav-pill { transition: none; transform: translateX(calc(var(--i, 0) * 100%)); transform-origin: center; will-change: transform; }
 @media (min-width: 900px) { .nav-pill { transform: translateY(calc(var(--i, 0) * 100%)); } }

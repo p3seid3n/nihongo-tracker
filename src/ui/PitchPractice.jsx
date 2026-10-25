@@ -9,6 +9,7 @@ import { pitchWords, buildPitchSession } from "../lib/pitchDrill.js";
 import { pitchType, morae } from "../lib/pitch.js";
 import { recordingSupported } from "../lib/pronounce.js";
 import * as hap from "../lib/haptics.js";
+import * as fx from "../lib/fx.js";
 
 const NATIVE = (w) => ({ file: w.part.file, text: "" }); // a recording or nothing: the synthetic voice does not get the accent right
 
@@ -70,7 +71,7 @@ export default function PitchPractice({ onClose }) {
     const right = value === q.answer;
     setPicked(value);
     setResults((r) => [...r, { q, right }]);
-    right ? hap.good() : hap.bad();
+    fx.answer({ ok: right, el: document.querySelector(".reader-body .q-prompt") });
   };
   const next = () => {
     hap.tap();

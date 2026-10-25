@@ -9,6 +9,11 @@ import { checkBuild } from "../lib/exercises.js";
 import { explainBuild, explainChoice } from "../lib/mistakes.js";
 import { plainOf } from "../lib/jp.js";
 import * as hap from "../lib/haptics.js";
+import * as fx from "../lib/fx.js";
+import { ComboChip } from "./Dojo.jsx";
+
+/** The part of the exercise the blade cuts across when you get it right. */
+const promptEl = () => document.querySelector(".ex-frame .q-prompt") || document.querySelector(".ex-frame .lesson-body");
 
 /** Inline text with **bold** and furigana markup. */
 export function Rich({ text }) {
@@ -177,7 +182,7 @@ function Choose({ ex, onDone }) {
   const check = () => {
     const chosen = ex.options.find((o) => o.id === sel);
     const ok = !!chosen?.correct;
-    ok ? hap.correct() : hap.wrong();
+    fx.answer({ ok, el: promptEl() });
     let explain = null;
     try { explain = explainChoice(ex, chosen); } catch (e) { console.error(e); explain = ex.explain ? { points: [ex.explain] } : null; }
     setVerdict({ correct: ok, answer: correct.text, explain });
@@ -310,7 +315,7 @@ function TileBoard({ bank, picked, setPicked, locked }) {
       if (over) {
         const at = Math.min(insertAt(e.clientX, e.clientY), without.length);
         setPicked([...without.slice(0, at), p.id, ...without.slice(at)]);
-        hap.snap();
+        fx.place(at);
       } else if (p.from === "answer") {
         setPicked(without);
         hap.tap();
@@ -327,7 +332,7 @@ function TileBoard({ bank, picked, setPicked, locked }) {
     return () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", upH); window.removeEventListener("pointercancel", upH); };
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const add = (id) => { if (!locked && !picked.includes(id)) { setPicked([...picked, id]); hap.tap(); } };
+  const add = (id) => { if (!locked && !picked.includes(id)) { setPicked([...picked, id]); fx.place(picked.length); } };
   const remove = (id) => { if (!locked) { setPicked(picked.filter((x) => x !== id)); hap.tap(); } };
 
   // the sentence as shown while dragging: the dragged tile's gap moves to where it would land
@@ -369,7 +374,7 @@ function Build({ ex, onDone }) {
     let explain = null;
     try { explain = explainBuild(ex, texts); } catch (e) { console.error(e); }
     const ok = checkBuild(ex, texts) || !!(explain && explain.alt);
-    ok ? hap.correct() : hap.wrong();
+    fx.answer({ ok, el: promptEl() });
     setVerdict({ correct: ok, answer: ex.answer.join(""), explain: explain || (ex.explain ? { points: [ex.explain] } : null) });
   };
   useRecapAudio(verdict, ex.recap);
@@ -407,12 +412,13 @@ function Match({ ex, onDone }) {
       if (side === "l") hear(id);
       return;
     }
-    if (sel.id === id) { setGone((g) => ({ ...g, [id]: true })); setSel(null); hap.match(); hear(id); return; }
+    if (sel.id === id) { setGone((g) => ({ ...g, [id]: true })); setSel(null); hap.match(); fx.place(Object.keys(gone).length + 2); hear(id); return; }
     const key = side + id;
-    setWrong(key); setMistakes((m) => m + 1); hap.wrong();
+    setWrong(key); setMistakes((m) => m + 1); fx.nope();
     setTimeout(() => setWrong((w) => (w === key ? null : w)), 350);
   };
   const on = (side, id) => !!sel && sel.side === side && sel.id === id;
+  useEffect(() => { if (finished) fx.answer({ ok: mistakes === 0, el: document.querySelector(".ex-frame .match") || promptEl() }); }, [finished]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <div className="lesson-body">
@@ -476,6 +482,7 @@ export function ExerciseRunner({ exercises, onFinish, onClose, title, resume = n
       <div className="lesson-top">
         <button className="icon-btn" onClick={onClose} aria-label="Leave practice"><Icon name="close" /></button>
         <div className="study-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${pct}%` }} /></div>
+        <ComboChip />
         {title && <span className="chip">{title}</span>}
         {onRestart && i > 0 && <button className="icon-btn" onClick={onRestart} aria-label="Start this practice over"><Icon name="refresh" /></button>}
       </div>
